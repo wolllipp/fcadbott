@@ -55,7 +55,7 @@ export default function StudentPicker({ students, selectedIds, externalStudents,
       {selectedIds.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 12px', background: 'var(--accent-dim)', borderRadius: 'var(--radius-sm)' }}>
           <span style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
-            ✓ Выбрано: {selectedIds.length + externalStudents.filter(e => e.fullName).length}
+            ✓ Выбрано: {selectedIds.length + externalStudents.filter(e => e.fullName && e.studentCardNumber).length}
           </span>
         </div>
       )}
@@ -109,7 +109,7 @@ export default function StudentPicker({ students, selectedIds, externalStudents,
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <input className="input" placeholder="ФИО *" value={ext.fullName} onChange={(e) => updateExternal(i, 'fullName', e.target.value)} />
                   <input className="input" placeholder="Номер группы *" value={ext.groupNumber} onChange={(e) => updateExternal(i, 'groupNumber', e.target.value)} />
-                  <input className="input" placeholder="Номер студенческого" value={ext.studentCardNumber} onChange={(e) => updateExternal(i, 'studentCardNumber', e.target.value)} />
+                  <input className="input" placeholder="Номер студенческого *" value={ext.studentCardNumber} onChange={(e) => updateExternal(i, 'studentCardNumber', e.target.value)} />
                 </div>
               </div>
             ))}

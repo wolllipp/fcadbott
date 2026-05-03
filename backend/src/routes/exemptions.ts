@@ -76,6 +76,35 @@ router.get('/pending', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/exemptions/all — for secretary, view all exemptions
+router.get('/all', async (req: Request, res: Response) => {
+  try {
+    const { week } = req.query;
+    let where: any = {};
+    if (week === 'current') {
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mon = new Date(now);
+      mon.setHours(0, 0, 0, 0);
+      mon.setDate(now.getDate() + diffToMon);
+      const sat = new Date(mon);
+      sat.setDate(mon.getDate() + 5);
+      sat.setHours(23, 59, 59, 999);
+      where = { exemptionDate: { gte: mon, lte: sat } };
+    }
+    const exemptions = await prisma.exemption.findMany({
+      where,
+      include: { coordinator: true, students: { include: { student: true } } },
+      orderBy: { exemptionDate: 'desc' },
+    });
+    res.json(exemptions);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // POST /api/exemptions
 router.post('/', async (req: Request, res: Response) => {
   try {
@@ -87,9 +116,9 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Можно выставлять освобождения только на текущей неделе' });
     }
 
-    // Check if coordinator is chairman/deputy — auto-approve
+    // Check if coordinator is chairman/deputy/secretary — auto-approve
     const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId } });
-    const isChairman = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY';
+    const isChairman = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY' || coordinator?.role === 'SECRETARY';
     const status = isChairman ? 'APPROVED' : 'PENDING';
 
     const exemption = await prisma.exemption.create({
@@ -131,8 +160,8 @@ router.post('/', async (req: Request, res: Response) => {
 router.post('/:id/approve', async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
-    if (role !== 'CHAIRMAN' && role !== 'DEPUTY') {
-      return res.status(403).json({ error: 'Только председатель может подтверждать докладные' });
+    if (role !== 'CHAIRMAN' && role !== 'DEPUTY' && role !== 'DEAN' && role !== 'SECRETARY') {
+      return res.status(403).json({ error: 'Только председатель или секретарь могут подтверждать докладные' });
     }
 
     const exemption = await prisma.exemption.update({
@@ -155,8 +184,8 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
 router.post('/:id/reject', async (req: Request, res: Response) => {
   try {
     const { role, rejectReason } = req.body;
-    if (role !== 'CHAIRMAN' && role !== 'DEPUTY') {
-      return res.status(403).json({ error: 'Только председатель может отклонять докладные' });
+    if (role !== 'CHAIRMAN' && role !== 'DEPUTY' && role !== 'DEAN' && role !== 'SECRETARY') {
+      return res.status(403).json({ error: 'Только председатель или секретарь могут отклонять докладные' });
     }
 
     const exemption = await prisma.exemption.update({

@@ -19,7 +19,7 @@ export interface Coordinator {
   id: number;
   fullName: string;
   telegramUsername: string;
-  role: 'CHAIRMAN' | 'DEPUTY' | 'SECRETARY' | 'COORDINATOR';
+  role: 'CHAIRMAN' | 'DEAN' | 'DEPUTY' | 'SECRETARY' | 'COORDINATOR';
   sector: string | null;
 }
 

@@ -31,7 +31,9 @@ function fmtDate(d: Date | string) {
 interface Props { coordinator: Coordinator; }
 
 export default function ExemptionsPage({ coordinator }: Props) {
-  const isChairman = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY';
+  const isChairman = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN';
+  const isSecretary = coordinator.role === 'SECRETARY';
+  const canManageExemptions = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN' || coordinator.role === 'SECRETARY';
 
   const [step, setStep] = useState<Step>('calendar');
   const [weekDays] = useState(getWeekDays());
@@ -57,6 +59,9 @@ export default function ExemptionsPage({ coordinator }: Props) {
     api.exemptions.list('current').then(setExemptions).catch(console.error);
     if (isChairman) {
       api.exemptions.pending().then(setPendingExemptions).catch(console.error);
+    }
+    if (isSecretary) {
+      api.exemptions.all('current').then(setPendingExemptions).catch(console.error);
     }
   }
 
@@ -261,8 +266,8 @@ export default function ExemptionsPage({ coordinator }: Props) {
         )}
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Освобождения</h1>
 
-        {/* Tabs for chairman */}
-        {isChairman && (step === 'calendar' || step === 'pending-list') && (
+        {/* Tabs for chairman/secretary */}
+        {(isChairman || isSecretary) && (step === 'calendar' || step === 'pending-list') && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['calendar', 'pending-list'] as const).map((tab) => (
               <button key={tab} onClick={() => { setActiveTab(tab === 'calendar' ? 'calendar' : 'pending'); setStep(tab); }}
@@ -276,7 +281,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
                 }}>
                 {tab === 'calendar' ? 'Календарь' : (
                   <span>
-                    На рассмотрении
+                    {isSecretary ? 'Все освобождения' : 'На рассмотрении'}
                     {pendingExemptions.length > 0 && (
                       <span style={{ marginLeft: 6, background: 'var(--error)', color: 'white', borderRadius: 10, padding: '1px 6px', fontSize: 11 }}>
                         {pendingExemptions.length}
@@ -290,29 +295,40 @@ export default function ExemptionsPage({ coordinator }: Props) {
         )}
       </div>
 
-      {/* PENDING LIST (chairman) */}
+      {/* PENDING LIST (chairman) / ALL LIST (secretary) */}
       {step === 'pending-list' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           {pendingExemptions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 14 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
-              Нет докладных на рассмотрении
+              {isSecretary ? 'Нет освобождений' : 'Нет докладных на рассмотрении'}
             </div>
-          ) : pendingExemptions.map((ex) => (
-            <div key={ex.id} className="card" style={{ marginBottom: 10, cursor: 'pointer' }}
-              onClick={() => { setSelectedPending(ex); setStep('pending-detail'); }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{ex.coordinator.fullName}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>
-                    📅 {fmtDate(ex.exemptionDate)} · {ex.students.length} студ.
+          ) : pendingExemptions.map((ex) => {
+            const statusLabel = isSecretary
+              ? (ex.status === 'APPROVED' ? 'Подтверждено' : ex.status === 'REJECTED' ? 'Отклонено' : 'На рассмотрении')
+              : 'Ожидает';
+            const statusClass = isSecretary
+              ? (ex.status === 'APPROVED' ? 'badge-green' : ex.status === 'REJECTED' ? 'badge-gray' : 'badge-yellow')
+              : 'badge-accent';
+            return (
+              <div key={ex.id} className="card" style={{ marginBottom: 10, cursor: (isChairman && ex.status === 'PENDING') ? 'pointer' : 'default' }}
+                onClick={() => { if (isChairman && ex.status === 'PENDING') { setSelectedPending(ex); setStep('pending-detail'); } }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{ex.coordinator.fullName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>
+                      📅 {fmtDate(ex.exemptionDate)} · {ex.students.length} студ.
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ex.reason}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ex.reason}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                    {isChairman && ex.status === 'PENDING' && <span style={{ color: 'var(--accent)', fontSize: 18 }}>›</span>}
+                  </div>
                 </div>
-                <span style={{ color: 'var(--accent)', fontSize: 18 }}>›</span>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div style={{ height: 20 }} />
         </div>
       )}

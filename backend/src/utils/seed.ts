@@ -6,8 +6,10 @@ const prisma = new PrismaClient();
 
 const COORDINATORS = [
   { fullName: 'Скворец Иван Сергеевич', telegramUsername: 'wolllip', role: 'CHAIRMAN' as const, sector: null },
+  { fullName: 'Инна Владимировна', telegramUsername: 'innandri', role: 'DEAN' as const, sector: null },
   { fullName: 'Линкевич Алексей Олегович', telegramUsername: 'feasga', role: 'DEPUTY' as const, sector: null },
   { fullName: 'Самуйлик Елизавета Андреевна', telegramUsername: 'liza_samuylik', role: 'DEPUTY' as const, sector: null },
+  { fullName: 'Ларченко Мария Васильевна', telegramUsername: 'mshllka', role: 'SECRETARY' as const, sector: null },
   { fullName: 'Садовский Александр Анатольевич', telegramUsername: 'alexsadouski', role: 'COORDINATOR' as const, sector: 'Научное' },
   { fullName: 'Шаблинский Александр Кириллович', telegramUsername: 'lL_U_L_Ul', role: 'COORDINATOR' as const, sector: 'Инструментальное' },
   { fullName: 'Цуприк Илья Русланович', telegramUsername: 'ilyhat69', role: 'COORDINATOR' as const, sector: 'Танцевальное' },

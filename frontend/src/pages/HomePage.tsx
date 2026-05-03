@@ -2,11 +2,32 @@ import React from 'react';
 import { Coordinator, Tab } from '../App';
 
 const ROLE_LABEL: Record<string, string> = {
-  CHAIRMAN: 'Председатель',
+  CHAIRMAN: 'Председатель студенческого совета',
   DEPUTY: 'Заместитель председателя',
-  SECRETARY: 'Секретарь',
+  SECRETARY: 'Секретарь студенческого совета',
+  DEAN: 'Мама ФКП',
   COORDINATOR: 'Координатор',
 };
+
+// Proper adjective form for sector name in "X направление"
+const SECTOR_ADJECTIVE: Record<string, string> = {
+  'Научное': 'Научного',
+  'Инструментальное': 'Инструментального',
+  'Танцевальное': 'Танцевального',
+  'Театральное': 'Театрального',
+  'Учебное': 'Учебного',
+  'Вокальное': 'Вокального',
+  'Культурно-массовое': 'Культурно-массового',
+  'Декоративное': 'Декоративного',
+  'Спортивное': 'Спортивного',
+  'Профориентационное': 'Профориентационного',
+  'Информационное': 'Информационного',
+};
+
+function sectorLabel(sector: string | null): string {
+  if (!sector) return '';
+  return `${sector} направление`;
+}
 
 interface Props {
   coordinator: Coordinator;
@@ -19,7 +40,7 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
     now.getHours() < 12 ? 'Доброе утро' :
     now.getHours() < 18 ? 'Добрый день' : 'Добрый вечер';
 
-  const isChairman = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY';
+  const isChairman = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN';
   const day = now.getDate();
   const bonusOpen = day >= 20;
 
@@ -28,47 +49,24 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
       <div style={{ padding: '24px 16px 0' }}>
         {/* Header */}
         <div style={{ marginBottom: 28 }} className="animate-in">
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            marginBottom: 20,
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
             <div style={{
-              width: 52,
-              height: 52,
-              borderRadius: 16,
+              width: 52, height: 52, borderRadius: 16,
               background: 'var(--accent-dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 26,
-              border: '1px solid rgba(123,110,246,0.3)',
-            }}>
-              🎓
-            </div>
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 26, border: '1px solid rgba(123,110,246,0.3)',
+            }}>🎓</div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 СС ФКП БГУИР
               </div>
-              <div style={{ fontWeight: 700, fontSize: 18, lineHeight: 1.2 }}>
-                {greeting}!
-              </div>
+              <div style={{ fontWeight: 700, fontSize: 18, lineHeight: 1.2 }}>{greeting}!</div>
             </div>
           </div>
 
           {/* Profile card */}
           <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
-            <div style={{
-              position: 'absolute',
-              top: -20,
-              right: -20,
-              width: 100,
-              height: 100,
-              borderRadius: '50%',
-              background: 'var(--accent-dim)',
-              filter: 'blur(30px)',
-            }} />
+            <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'var(--accent-dim)', filter: 'blur(30px)' }} />
             <div style={{ position: 'relative' }}>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>
                 {ROLE_LABEL[coordinator.role] || coordinator.role}
@@ -78,18 +76,11 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
               </div>
               {coordinator.sector && (
                 <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  marginTop: 8,
-                  background: 'var(--accent-dim)',
-                  color: 'var(--accent)',
-                  padding: '4px 10px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  marginTop: 8, background: 'var(--accent-dim)', color: 'var(--accent)',
+                  padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                 }}>
-                  <span>◈</span> {coordinator.sector} направление
+                  <span>◈</span> {sectorLabel(coordinator.sector)}
                 </div>
               )}
             </div>
@@ -97,23 +88,18 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
         </div>
 
         {/* Quick actions */}
-        <div style={{ marginBottom: 24 }} className="animate-in" >
+        <div style={{ marginBottom: 24 }} className="animate-in">
           <div className="section-label">Быстрые действия</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button
               onClick={() => onNavigate('exemptions')}
               className="card"
-              style={{
-                cursor: 'pointer',
-                border: '1px solid var(--border)',
-                textAlign: 'left',
-                transition: 'all 0.18s',
-              }}
+              style={{ cursor: 'pointer', border: '1px solid var(--border)', textAlign: 'left', transition: 'all 0.18s' }}
               onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
               onMouseUp={(e) => (e.currentTarget.style.transform = '')}
             >
               <div style={{ fontSize: 28, marginBottom: 10 }}>📋</div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Освобождение</div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Освобождения</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Выставить на текущей неделе</div>
             </button>
 
@@ -123,8 +109,7 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
               style={{
                 cursor: 'pointer',
                 border: `1px solid ${bonusOpen ? 'rgba(123,110,246,0.3)' : 'var(--border)'}`,
-                textAlign: 'left',
-                transition: 'all 0.18s',
+                textAlign: 'left', transition: 'all 0.18s',
                 background: bonusOpen ? 'rgba(123,110,246,0.06)' : 'var(--bg-card)',
               }}
               onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
@@ -158,8 +143,8 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
               <>
                 <div style={{ height: 1, background: 'var(--border)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Роль</span>
-                  <span className="badge badge-accent">Расширенный доступ</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Уровень доступа</span>
+                  <span className="badge badge-accent">Расширенный</span>
                 </div>
               </>
             )}

@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   CHAIRMAN
+  DEAN
   DEPUTY
   SECRETARY
   COORDINATOR
@@ -112,4 +113,7 @@ model BonusEntry {
   reason            String   @default("Организация мероприятий на факультете и в университете и участие в них")
   deferredToMonth   Int?
   deferredToYear    Int?
+  budgetStudentName String?  // For paid students: the budget student whose line they go under
+  budgetStudentGroup String?
+  budgetStudentCard String?
 }

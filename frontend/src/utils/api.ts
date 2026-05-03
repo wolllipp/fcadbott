@@ -25,6 +25,7 @@ export const api = {
   },
   exemptions: {
     list: (week?: string) => apiRequest(`/exemptions${week ? `?week=${week}` : ''}`),
+    all: (week?: string) => apiRequest(`/exemptions/all${week ? `?week=${week}` : ''}`),
     alreadyExempted: (date: string) => apiRequest(`/exemptions/already-exempted?date=${date}`),
     pending: () => apiRequest('/exemptions/pending'),
     create: (data: any) => apiRequest('/exemptions', { method: 'POST', body: JSON.stringify(data) }),
@@ -38,7 +39,9 @@ export const api = {
     },
     create: (data: any) => apiRequest('/bonuses', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: number, data: any) => apiRequest(`/bonuses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateByCoordinator: (id: number, data: any) => apiRequest(`/bonuses/coordinator/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     approve: (id: number, role: string) => apiRequest(`/bonuses/${id}/approve`, { method: 'POST', body: JSON.stringify({ role }) }),
     deferEntry: (entryId: number, data: any) => apiRequest(`/bonuses/entry/${entryId}/defer`, { method: 'POST', body: JSON.stringify(data) }),
+    addEntry: (id: number, data: any) => apiRequest(`/bonuses/${id}/add-entry`, { method: 'POST', body: JSON.stringify(data) }),
   },
 };
