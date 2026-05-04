@@ -1,4 +1,4 @@
-const BASE = 'http://155.212.244.188:3001/api';
+const BASE = 'https://minority-erik-lying-intend.trycloudflare.com/api';
 
 export async function apiRequest(path: string, options?: RequestInit) {
   const res = await fetch(`${BASE}${path}`, {
