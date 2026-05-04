@@ -1,4 +1,4 @@
-const BASE = 'https://fcadbot.site/api';
+const BASE = '/api';
 
 export async function apiRequest(path: string, options?: RequestInit) {
   const res = await fetch(`${BASE}${path}`, {
