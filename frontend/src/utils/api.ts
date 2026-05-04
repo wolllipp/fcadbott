@@ -1,4 +1,4 @@
-const BASE = '/api';
+const BASE = 'http://155.212.244.188:3001/api';
 
 export async function apiRequest(path: string, options?: RequestInit) {
   const res = await fetch(`${BASE}${path}`, {
