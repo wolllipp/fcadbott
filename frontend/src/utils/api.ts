@@ -1,4 +1,4 @@
-const BASE = 'https://minority-erik-lying-intend.trycloudflare.com/api';
+const BASE = 'https://fcadbot.site/api';
 
 export async function apiRequest(path: string, options?: RequestInit) {
   const res = await fetch(`${BASE}${path}`, {
