@@ -1,5 +1,5 @@
-node_modules/
+._*
 .DS_Store
-*.tar.gz
-dist/
-.env
+*.log
+node_modules/
+backend/backend.log
