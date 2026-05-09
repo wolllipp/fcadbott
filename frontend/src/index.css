@@ -271,3 +271,28 @@ html, body, #root {
   color: var(--text-muted);
   margin-bottom: 8px;
 }
+input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  min-height: 48px;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.5em;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 4px;
+}
+input[type="date"]::-webkit-datetime-edit {
+  display: flex;
+  align-items: center;
+  min-height: 1.5em;
+}

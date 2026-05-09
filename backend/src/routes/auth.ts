@@ -90,7 +90,7 @@ router.post('/verify', async (req: Request, res: Response) => {
 
 router.post('/student-register', async (req: Request, res: Response) => {
   try {
-    const { fullName, studentCardNumber, telegramUsername } = req.body;
+    const { fullName, studentCardNumber, telegramUsername, initData } = req.body;
     if (!fullName || !studentCardNumber || !telegramUsername) {
       return res.status(400).json({ error: 'fullName, studentCardNumber и telegramUsername обязательны' });
     }
@@ -107,9 +107,22 @@ router.post('/student-register', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'Этот студент уже привязан к другому Telegram аккаунту' });
     }
 
+    // Extract chatId from initData
+    let chatId: string | undefined;
+    if (initData) {
+      const data = verifyTelegramWebAppData(initData);
+      if (data) {
+        const user = JSON.parse(data.user || '{}');
+        if (user.id) chatId = String(user.id);
+      }
+    }
+
     const updated = await prisma.student.update({
       where: { id: student.id },
-      data: { telegramUsername: telegramUsername.replace('@', '') },
+      data: {
+        telegramUsername: telegramUsername.replace('@', ''),
+        ...(chatId && { chatId }),
+      },
     });
 
     res.json({ student: updated });
@@ -121,7 +134,7 @@ router.post('/student-register', async (req: Request, res: Response) => {
 
 router.post('/student-login', async (req: Request, res: Response) => {
   try {
-    const { telegramUsername } = req.body;
+    const { telegramUsername, initData } = req.body;
     if (!telegramUsername) {
       return res.status(400).json({ error: 'telegramUsername обязателен' });
     }
@@ -134,7 +147,24 @@ router.post('/student-login', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Студент не найден. Пройдите регистрацию.' });
     }
 
-    res.json({ student });
+    // Extract chatId from initData
+    let chatId: string | undefined;
+    if (initData) {
+      const data = verifyTelegramWebAppData(initData);
+      if (data) {
+        const user = JSON.parse(data.user || '{}');
+        if (user.id) chatId = String(user.id);
+      }
+    }
+
+    if (chatId && student.chatId !== chatId) {
+      await prisma.student.update({
+        where: { id: student.id },
+        data: { chatId },
+      });
+    }
+
+    res.json({ student: { ...student, chatId: chatId || student.chatId } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

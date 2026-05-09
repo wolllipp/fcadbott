@@ -18,10 +18,11 @@ export default function StudentLoginPage({ onLogin }: Props) {
     setLoading(true);
     setError('');
     try {
+      const initData = window.Telegram?.WebApp?.initData || '';
       const res = await fetch('/api/auth/student-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telegramUsername }),
+        body: JSON.stringify({ telegramUsername, initData }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -40,10 +41,11 @@ export default function StudentLoginPage({ onLogin }: Props) {
     setLoading(true);
     setError('');
     try {
+      const initData = window.Telegram?.WebApp?.initData || '';
       const res = await fetch('/api/auth/student-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, studentCardNumber, telegramUsername }),
+        body: JSON.stringify({ fullName, studentCardNumber, telegramUsername, initData }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);

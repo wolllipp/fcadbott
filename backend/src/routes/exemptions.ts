@@ -274,6 +274,17 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
       include: { coordinator: true, students: { include: { student: true } } },
     });
 
+    // Notify students
+    try {
+      const { sendExemptionToStudent } = require('../services/bot');
+      for (const es of exemption.students) {
+        if (es.studentId) {
+          const student = await prisma.student.findUnique({ where: { id: es.studentId } });
+          if (student) sendExemptionToStudent(exemption, student);
+        }
+      }
+    } catch (_) {}
+
     await sendExemptionReport(exemption);
 
     res.json(exemption);

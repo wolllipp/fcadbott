@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 export interface Student {
   id: number;
@@ -22,11 +22,12 @@ interface Props {
   onExternalChange: (students: ExternalStudent[]) => void;
   alreadyExemptedIds?: number[];
   showStudentCard?: boolean;
+  hideExternal?: boolean;
 }
 
-export default function StudentPicker({ students, selectedIds, externalStudents, onToggle, onExternalChange, alreadyExemptedIds = [], showStudentCard = false }: Props) {
-  const [search, setSearch] = useState('');
-  const [showExternal, setShowExternal] = useState(false);
+export default function StudentPicker({ students, selectedIds, externalStudents, onToggle, onExternalChange, alreadyExemptedIds = [], showStudentCard = false, hideExternal = false }: Props) {
+  const [search, setSearch] = React.useState('');
+  const [showExternal, setShowExternal] = React.useState(false);
 
   const filtered = students.filter((s) =>
     s.fullName.toLowerCase().includes(search.toLowerCase()) ||
@@ -97,34 +98,36 @@ export default function StudentPicker({ students, selectedIds, externalStudents,
         })}
       </div>
 
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-        <button onClick={() => setShowExternal(!showExternal)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500, padding: '4px 0', marginBottom: 12 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: 'var(--surface)', fontSize: 14, transition: 'transform 0.18s', transform: showExternal ? 'rotate(90deg)' : 'none' }}>›</span>
-          Добавить студента не из сектора
-        </button>
+      {!hideExternal && (
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <button onClick={() => setShowExternal(!showExternal)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500, padding: '4px 0', marginBottom: 12 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: 'var(--surface)', fontSize: 14, transition: 'transform 0.18s', transform: showExternal ? 'rotate(90deg)' : 'none' }}>›</span>
+            Добавить студента не из сектора
+          </button>
 
-        {showExternal && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {externalStudents.map((ext, i) => (
-              <div key={i} className="card" style={{ padding: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Студент #{i + 1}</span>
-                  <button onClick={() => removeExternal(i)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          {showExternal && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {externalStudents.map((ext, i) => (
+                <div key={i} className="card" style={{ padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Студент #{i + 1}</span>
+                    <button onClick={() => removeExternal(i)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 16 }}>×</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input className="input" placeholder="ФИО *" value={ext.fullName} onChange={(e) => updateExternal(i, 'fullName', e.target.value)} />
+                    <input className="input" placeholder="Номер группы *" value={ext.groupNumber} onChange={(e) => updateExternal(i, 'groupNumber', e.target.value)} />
+                    {showStudentCard && (
+                      <input className="input" placeholder="Номер студенческого *" value={ext.studentCardNumber || ''} onChange={(e) => updateExternal(i, 'studentCardNumber', e.target.value)} />
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input className="input" placeholder="ФИО *" value={ext.fullName} onChange={(e) => updateExternal(i, 'fullName', e.target.value)} />
-                  <input className="input" placeholder="Номер группы *" value={ext.groupNumber} onChange={(e) => updateExternal(i, 'groupNumber', e.target.value)} />
-                  {showStudentCard && (
-                    <input className="input" placeholder="Номер студенческого *" value={ext.studentCardNumber || ''} onChange={(e) => updateExternal(i, 'studentCardNumber', e.target.value)} />
-                  )}
-                </div>
-              </div>
-            ))}
-            <button className="btn btn-ghost" onClick={addExternal} style={{ fontSize: 14 }}>+ Добавить студента</button>
-          </div>
-        )}
-      </div>
+              ))}
+              <button className="btn btn-ghost" onClick={addExternal} style={{ fontSize: 14 }}>+ Добавить студента</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

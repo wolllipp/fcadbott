@@ -136,9 +136,17 @@ router.put('/:eventId/participants/:participantId', async (req: Request, res: Re
 
     if (attended === true) {
       try {
-        const { sendAttendedMarked } = require('../services/bot');
+        const { sendAttendanceMarked, checkMilestone } = require('../services/bot');
         const event = await prisma.event.findUnique({ where: { id: updated.eventId } });
-        if (event) sendAttendedMarked(updated.fullName, event.name, event.eventDate);
+        if (event) {
+          const student = await prisma.student.findFirst({
+            where: { fullName: updated.fullName, groupNumber: updated.groupNumber },
+          });
+          if (student) {
+            sendAttendanceMarked(student, event.name, event.eventDate);
+            checkMilestone(student.id);
+          }
+        }
       } catch (_) {}
     }
 

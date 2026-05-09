@@ -75,11 +75,7 @@ export default function PetitionsAdminPage({ coordinator }: Props) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 16px 0', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => window.history.length > 1 ? window.history.back() : null}
-          style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)' }}>
-          ← Назад
-        </button>
+      <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Ходатайства</h1>
       </div>
       <div className="page-scroll" style={{ padding: '0 16px' }}>

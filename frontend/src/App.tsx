@@ -35,6 +35,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [tab, setTab] = useState<Tab>('home');
+  const [pendingPetitions, setPendingPetitions] = useState(0);
+
+  const isAdmin = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY' || coordinator?.role === 'DEAN' || coordinator?.role === 'SECRETARY';
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -54,16 +57,15 @@ export default function App() {
         const res = await api.auth.verify(initData, testUsername || undefined);
         setCoordinator(res.coordinator);
       } catch {
-        // Check if student is saved in localStorage
         const saved = localStorage.getItem('student');
         if (saved) {
           try {
             const s = JSON.parse(saved);
-            // Verify student is still valid by telegramUsername
+            const initData = window.Telegram?.WebApp?.initData || '';
             const res = await fetch('/api/auth/student-login', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ telegramUsername: s.telegramUsername }),
+              body: JSON.stringify({ telegramUsername: s.telegramUsername, initData }),
             });
             if (res.ok) {
               const data = await res.json();
@@ -83,6 +85,17 @@ export default function App() {
     }
 
     auth();
+
+    async function fetchPending() {
+      try {
+        const res = await fetch('/api/petitions?role=CHAIRMAN');
+        const data = await res.json();
+        setPendingPetitions(data.filter((p: any) => p.status === 'PENDING').length);
+      } catch (_) {}
+    }
+    fetchPending();
+    const iv = setInterval(fetchPending, 10000);
+    return () => clearInterval(iv);
   }, []);
 
   function handleStudentLogin(s: any) {
@@ -98,19 +111,16 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
 
-  // Student mode
   if (!coordinator && student) {
     return (
       <StudentDashboard student={student} onLogout={handleStudentLogout} />
     );
   }
 
-  // Student login
   if (!coordinator && denied && !student) {
     return <StudentLoginPage onLogin={handleStudentLogin} />;
   }
 
-  // Coordinator mode
   if (!coordinator) return <AccessDenied />;
 
   return (
@@ -118,11 +128,11 @@ export default function App() {
       {tab === 'home' && <HomePage coordinator={coordinator} onNavigate={setTab} />}
       {tab === 'exemptions' && <ExemptionsPage coordinator={coordinator} />}
       {tab === 'bonuses' && <BonusesPage coordinator={coordinator} />}
-      {tab === 'sector' && <SectorPage coordinator={coordinator} />}
+      {tab === 'sector' && (isAdmin ? <CouncilPage coordinator={coordinator} /> : <SectorPage coordinator={coordinator} />)}
       {tab === 'events' && <EventsPage coordinator={coordinator} />}
       {tab === 'council' && <CouncilPage coordinator={coordinator} />}
       {tab === 'petitions' && <PetitionsAdminPage coordinator={coordinator} />}
-      <NavBar active={tab} onChange={setTab} coordinator={coordinator} />
+      <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} />
     </div>
   );
 }

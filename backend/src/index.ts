@@ -9,14 +9,14 @@ import { sectorsRouter } from './routes/sectors';
 import { eventsRouter } from './routes/events';
 import { councilRouter } from './routes/council';
 import { petitionsRouter } from './routes/petitions';
-import { initBot, sendEventReminders } from './services/bot';
+import { initBot, getBot, sendEventReminders } from './services/bot';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: 'https://fcadbot.site' }));
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
@@ -28,11 +28,17 @@ app.use('/api/events', eventsRouter);
 app.use('/api/council', councilRouter);
 app.use('/api/petitions', petitionsRouter);
 
+app.post('/api/bot-webhook', (req, res) => {
+  const b = getBot();
+  if (b) (b as any).processWebHook(req, res);
+  else res.status(503).json({ error: 'Bot not initialized' });
+});
+
 app.get('/health', (_, res) => res.json({ ok: true }));
 
-app.listen(PORT, () => {
+app.listen(Number(PORT), "127.0.0.1", async () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
-  initBot();
+  await initBot();
   sendEventReminders();
   setInterval(sendEventReminders, 60 * 60 * 1000);
 });

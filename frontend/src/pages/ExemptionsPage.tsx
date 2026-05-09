@@ -40,6 +40,27 @@ function fmtDate(d: Date | string) {
   return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
 }
 
+const slideAnim = `
+@keyframes slideFromRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideFromLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+`;
+const detailAnim = `
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+`;
 function getSectorName(coordinator: any): string {
   if (!coordinator || !coordinator.sector) return 'Без сектора';
   return coordinator.sector;
@@ -72,11 +93,12 @@ export default function ExemptionsPage({ coordinator }: Props) {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('calendar');
   const [editingExemption, setEditingExemption] = useState<any>(null);
+  const [showExternalModal, setShowExternalModal] = useState(false);
+  const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
 
   useEffect(() => { loadData(); }, [weekOffset]);
 
   async function loadData() {
-    const days = getWeekDays(weekOffset);
     const key = weekOffset === 0 ? 'current' : 'other';
     api.exemptions.list(key, weekOffset).then(setExemptions).catch(console.error);
     if (isChairman) {
@@ -203,6 +225,20 @@ export default function ExemptionsPage({ coordinator }: Props) {
     loadData();
   }
 
+  function addExternalInModal() {
+    setExternalStudents([...externalStudents, { fullName: '', groupNumber: '', studentCardNumber: '' }]);
+  }
+
+  function updateExternalInModal(i: number, field: keyof ExternalStudent, value: string) {
+    const updated = [...externalStudents];
+    updated[i] = { ...updated[i], [field]: value };
+    setExternalStudents(updated);
+  }
+
+  function removeExternalInModal(i: number) {
+    setExternalStudents(externalStudents.filter((_, idx) => idx !== i));
+  }
+
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   function dayHasExemption(d: Date) {
@@ -214,16 +250,18 @@ export default function ExemptionsPage({ coordinator }: Props) {
   }
 
   function navigateWeek(direction: number) {
+    setSlideDir(direction > 0 ? 'right' : 'left');
     setWeekOffset((prev) => prev + direction);
+    setTimeout(() => setSlideDir(null), 300);
   }
 
   if (step === 'success') {
-    const isOwn = isChairman;
     return (
       <div style={{ flex: 1, overflow: 'hidden' }}>
+        <style>{slideAnim}{detailAnim}</style>
         <SuccessScreen
           title="Освобождения выставлены"
-          subtitle={isOwn ? 'Докладная и файл отправлены секретарю' : 'Докладная отправлена председателю на рассмотрение'}
+          subtitle={isChairman ? 'Докладная и файл отправлены секретарю' : 'Докладная отправлена председателю на рассмотрение'}
           onDone={reset}
         />
       </div>
@@ -233,6 +271,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
   if (step === 'pending-detail' && selectedPending) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <style>{slideAnim}{detailAnim}</style>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
           <button onClick={() => { setStep('pending-list'); setSelectedPending(null); setShowRejectInput(false); setRejectReason(''); }}
             style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)', marginBottom: 12 }}>
@@ -291,6 +330,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
   if (step === 'edit' && editingExemption) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <style>{slideAnim}{detailAnim}</style>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
           <button onClick={() => { setStep('calendar'); setEditingExemption(null); }}
             style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)', marginBottom: 12 }}>
@@ -381,7 +421,8 @@ export default function ExemptionsPage({ coordinator }: Props) {
     });
 
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.25s ease' }}>
+      <style>{slideAnim}{detailAnim}</style>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <button onClick={() => setDetailDay(null)} style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)' }}>← Назад</button>
@@ -423,6 +464,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
                               borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
                               color: ex.isExhibited ? 'var(--accent)' : 'var(--text-secondary)',
                               fontSize: 12, fontWeight: 600,
+                              animation: ex.isExhibited ? "pulse 0.3s ease" : "none",
                             }}>
                             {ex.isExhibited ? '✓ Выставлено' : '○ Выставить'}
                           </button>
@@ -527,6 +569,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
                         borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
                         color: ex.isExhibited ? 'var(--accent)' : 'var(--text-secondary)',
                         fontSize: 12, fontWeight: 600,
+                        animation: ex.isExhibited ? "pulse 0.3s ease" : "none",
                       }}>
                       {ex.isExhibited ? '✓ Выставлено' : '○ Выставить'}
                     </button>
@@ -565,7 +608,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
       )}
 
       {step === 'calendar' && (
-        <div className="page-scroll" style={{ padding: '0 16px' }}>
+        <div className="page-scroll" style={{ padding: '0 16px', animation: slideDir ? (slideDir === 'right' ? 'slideFromRight 0.25s ease' : 'slideFromLeft 0.25s ease') : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, animation: 'fadeIn 0.25s ease both' }}>
             <button onClick={() => navigateWeek(-1)} style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 10px', color: 'var(--text)', cursor: 'pointer', fontSize: 16 }}>‹</button>
             <div className="section-label" style={{ margin: 0 }}>{getWeekLabel(weekOffset)}</div>
@@ -611,27 +654,75 @@ export default function ExemptionsPage({ coordinator }: Props) {
       )}
 
       {step === 'pick' && (
-        <div className="page-scroll" style={{ padding: '0 16px' }}>
-          <div style={{ padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-            ◎ {selectedDay && fmtDate(selectedDay)}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="page-scroll" style={{ padding: '0 16px' }}>
+            <div style={{ padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+              ◎ {selectedDay && fmtDate(selectedDay)}
+            </div>
+            {alreadyExemptedIds.length > 0 && (
+              <div style={{ padding: '10px 12px', background: 'var(--warning-dim)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--warning)' }}>
+                Студенты помечённые <strong>«уже освобождён»</strong> уже имеют освобождение на этот день
+              </div>
+            )}
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Загрузка...</div>
+            ) : (
+              <StudentPicker students={students} selectedIds={selectedIds} externalStudents={externalStudents}
+                onToggle={toggleStudent} onExternalChange={setExternalStudents} alreadyExemptedIds={alreadyExemptedIds}
+                hideExternal={true} />
+            )}
+            <div style={{ height: 16 }} />
           </div>
-          {alreadyExemptedIds.length > 0 && (
-            <div style={{ padding: '10px 12px', background: 'var(--warning-dim)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--warning)' }}>
-              Студенты помечённые <strong>«уже освобождён»</strong> уже имеют освобождение на этот день
+
+          <div style={{
+            flexShrink: 0, padding: '12px 16px',
+            paddingBottom: 'calc(12px + var(--safe-bottom, 0px))',
+            borderTop: '1px solid var(--border)', background: 'var(--bg)',
+            display: 'flex', gap: 8,
+          }}>
+            <button
+              onClick={() => setShowExternalModal(true)}
+              style={{
+                flex: 1, padding: '12px', borderRadius: 'var(--radius)',
+                border: '1.5px dashed var(--text-muted)', background: 'var(--bg-raised)',
+                color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13,
+                fontFamily: 'var(--font)', fontWeight: 500,
+              }}>
+              + Внешний студент
+            </button>
+            <button className="btn btn-primary" style={{ flex: 1 }}
+              disabled={selectedIds.length === 0 && externalStudents.filter(e => e.fullName).length === 0}
+              onClick={() => setStep('confirm')}>
+              Далее →
+            </button>
+          </div>
+
+          {showExternalModal && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', animation: 'fadeIn 0.15s ease' }}
+              onClick={() => setShowExternalModal(false)}>
+              <div style={{ width: '100%', maxWidth: 420, maxHeight: '70vh', background: 'var(--bg-card)', borderRadius: '16px 16px 0 0', padding: 20, overflow: 'auto', animation: 'menuFadeIn 0.2s ease', transformOrigin: 'bottom' }}
+                onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div className="section-label" style={{ margin: 0 }}>Внешние студенты ({externalStudents.length})</div>
+                  <button onClick={() => setShowExternalModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+                </div>
+                {externalStudents.map((ext, i) => (
+                  <div key={i} className="card" style={{ padding: 12, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>#{i + 1}</span>
+                      <button onClick={() => removeExternalInModal(i)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 16 }}>×</button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <input className="input" placeholder="ФИО *" value={ext.fullName} onChange={(e) => updateExternalInModal(i, 'fullName', e.target.value)} />
+                      <input className="input" placeholder="Номер группы *" value={ext.groupNumber} onChange={(e) => updateExternalInModal(i, 'groupNumber', e.target.value)} />
+                    </div>
+                  </div>
+                ))}
+                <button className="btn btn-ghost" onClick={addExternalInModal} style={{ width: '100%', fontSize: 14 }}>+ Добавить</button>
+                <button className="btn btn-primary" onClick={() => setShowExternalModal(false)} style={{ width: '100%', marginTop: 12 }}>Готово</button>
+              </div>
             </div>
           )}
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Загрузка...</div>
-          ) : (
-            <StudentPicker students={students} selectedIds={selectedIds} externalStudents={externalStudents}
-              onToggle={toggleStudent} onExternalChange={setExternalStudents} alreadyExemptedIds={alreadyExemptedIds} />
-          )}
-          <div style={{ marginTop: 16 }}>
-            <button className="btn btn-primary"
-              disabled={selectedIds.length === 0 && externalStudents.filter(e => e.fullName).length === 0}
-              onClick={() => setStep('confirm')}>Далее →</button>
-          </div>
-          <div style={{ height: 20 }} />
         </div>
       )}
 

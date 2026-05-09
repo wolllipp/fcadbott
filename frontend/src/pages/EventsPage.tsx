@@ -383,14 +383,14 @@ export default function EventsPage({ coordinator }: Props) {
 
         {step === 'add-participant' && selectedEvent && (
           <div style={{ paddingBottom: 16 }}>
-            <input className="input" placeholder="Поиск по имени…" value={searchQuery}
+            <input className="input" placeholder="Поиск по имени, группе или № студенческого…" value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ marginBottom: 10 }} />
             <div style={{ marginBottom: 6 }}>Студенческий совет:</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {councilStudents
                 .filter((s: any) => !selectedEvent.participants.some((p) => p.fullName === s.fullName))
-                .filter((s: any) => s.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
+                .filter((s: any) => s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || s.groupNumber?.includes(searchQuery) || s.studentCardNumber?.includes(searchQuery))
                 .map((s: any, i: number) => {
                 const checked = selectedStudentIds.has(s.id);
                 return (
@@ -416,7 +416,7 @@ export default function EventsPage({ coordinator }: Props) {
                   </label>
                 );
               })}
-              {councilStudents.filter((s: any) => !selectedEvent.participants.some((p) => p.fullName === s.fullName)).filter((s: any) => s.fullName.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+              {councilStudents.filter((s: any) => !selectedEvent.participants.some((p) => p.fullName === s.fullName)).filter((s: any) => s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || s.groupNumber?.includes(searchQuery) || s.studentCardNumber?.includes(searchQuery)).length === 0 && (
                 <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>
                   {searchQuery ? 'Ничего не найдено' : 'Нет доступных участников из студсовета'}
                 </div>

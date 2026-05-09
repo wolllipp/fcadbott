@@ -36,6 +36,12 @@ router.post('/', async (req: Request, res: Response) => {
       include: { events: true, student: true },
     });
 
+    // Notify chairman/dean
+    try {
+      const { sendPetitionPending } = require('../services/bot');
+      await sendPetitionPending(petition);
+    } catch (_) {}
+
     res.json(petition);
   } catch (err) {
     console.error(err);

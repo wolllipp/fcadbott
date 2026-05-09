@@ -78,7 +78,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
         ]);
         setEvents(evts);
         setPetitions(pets);
-        setExemptions(exmps.filter((e: ExemptionData) => e.status === 'APPROVED' && e.isExhibited));
+        setExemptions(exmps);
         const registered = evts.filter((e: EventData) =>
           e.participants.some((p: any) => p.fullName === student.fullName && p.groupNumber === student.groupNumber)
         );
@@ -144,6 +144,12 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     if ((e as any).attendanceFinalized) return false;
     return true;
   });
+  const availableEvents = events.filter((e) => {
+    if (new Date(e.eventDate) < new Date(new Date().setHours(0, 0, 0, 0))) return false;
+    if (myEventIds.has(e.id)) return false;
+    if ((e as any).attendanceFinalized) return false;
+    return true;
+  });
   const attendedEvents = events.filter((e) => myAttendedIds.includes(e.id));
   const missedEvents = events.filter((e) => {
     if (!myEventIds.has(e.id)) return false;
@@ -198,30 +204,37 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
       <div className="page-scroll" style={{ padding: '0 16px', marginTop: 12 }}>
         {tab === 'events' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {availableEvents.length > 0 && (
+              <>
+                <div className="section-label">Доступные для записи</div>
+                {availableEvents.map((ev) => (
+                  <div key={ev.id} className="card" style={{ animation: 'fadeIn 0.2s ease both' } as React.CSSProperties}>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{ev.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{fmtDate(ev.eventDate)}</div>
+                    {ev.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{ev.description}</div>}
+                    <button className="btn btn-primary" disabled={registering === ev.id}
+                      onClick={() => registerForEvent(ev.id)}
+                      style={{ padding: '10px', fontSize: 13 }}>
+                      {registering === ev.id ? '...' : '+ Записаться'}
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+
             {upcomingEvents.length > 0 && (
               <>
-                <div className="section-label">Предстоящие</div>
-                {upcomingEvents.map((ev) => {
-                  const isRegistered = myEventIds.has(ev.id);
-                  return (
-                    <div key={ev.id} className="card" style={{ animation: 'fadeIn 0.2s ease both' } as React.CSSProperties}>
-                      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{ev.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{fmtDate(ev.eventDate)}</div>
-                      {ev.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{ev.description}</div>}
-                      {isRegistered ? (
-                        <div style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
-                          ✓ Вы записаны
-                        </div>
-                      ) : (
-                        <button className="btn btn-primary" disabled={registering === ev.id}
-                          onClick={() => registerForEvent(ev.id)}
-                          style={{ padding: '10px', fontSize: 13 }}>
-                          {registering === ev.id ? '...' : '+ Записаться'}
-                        </button>
-                      )}
+                <div className="section-label" style={{ marginTop: availableEvents.length > 0 ? 16 : 0 }}>Предстоящие</div>
+                {upcomingEvents.map((ev) => (
+                  <div key={ev.id} className="card" style={{ animation: 'fadeIn 0.2s ease both' } as React.CSSProperties}>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{ev.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{fmtDate(ev.eventDate)}</div>
+                    {ev.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{ev.description}</div>}
+                    <div style={{ fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>
+                      ✓ Вы записаны
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </>
             )}
 
@@ -251,7 +264,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </>
             )}
 
-            {upcomingEvents.length === 0 && attendedEvents.length === 0 && missedEvents.length === 0 && (
+            {availableEvents.length === 0 && upcomingEvents.length === 0 && attendedEvents.length === 0 && missedEvents.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>○</div>
                 Нет мероприятий
@@ -303,7 +316,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
             {exemptions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>◎</div>
-                Нет выставленных освобождений
+                Нет освобождений
               </div>
             ) : (
               exemptions.map((ex) => {
@@ -311,17 +324,27 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
                   (es.student?.fullName || es.externalName) !== student.fullName
                 );
                 return (
-                  <div key={ex.id} className="card" style={{ borderColor: 'var(--success-dim)' }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{ex.reason}</div>
+                  <div key={ex.id} className="card" style={{ borderColor: ex.isExhibited ? 'var(--success-dim)' : (ex.status === 'APPROVED' ? 'var(--accent-dim)' : 'var(--warning-dim)') }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{ex.reason}</div>
+                      <span className="badge" style={{
+                        background: ex.isExhibited ? 'var(--success-dim)' : (ex.status === 'APPROVED' ? 'var(--accent-dim)' : 'var(--warning-dim)'),
+                        color: ex.isExhibited ? 'var(--success)' : (ex.status === 'APPROVED' ? 'var(--accent)' : 'var(--warning)'),
+                      }}>
+                        {ex.isExhibited ? 'Выставлено' : ex.status === 'APPROVED' ? 'Подтверждено' : 'На рассмотрении'}
+                      </span>
+                    </div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
                       {fmtDate(ex.exemptionDate)}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
                       Выставил(а): {ex.coordinator.fullName}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
-                      Вместе с вами ({otherStudents.length}):
-                    </div>
+                    {otherStudents.length > 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
+                        Вместе с вами ({otherStudents.length}):
+                      </div>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
                       {otherStudents.map((es: any, i: number) => (
                         <div key={i} style={{ fontSize: 13, color: 'var(--text)' }}>
