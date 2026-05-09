@@ -5,10 +5,15 @@ import { sendExemptionReport, sendExemptionPending } from '../services/bot';
 const router = Router();
 const prisma = new PrismaClient();
 
-function getWeekBounds() {
-  const now = new Date();
+function getWeekBounds(dateStr?: string) {
+  let now: Date;
+  if (dateStr) {
+    now = new Date(dateStr);
+  } else {
+    now = new Date();
+  }
   const day = now.getDay();
-  const diffToMon = (day === 0 ? -6 : 1 - day);
+  const diffToMon = day === 0 ? -6 : 1 - day;
   const mon = new Date(now);
   mon.setHours(0, 0, 0, 0);
   mon.setDate(now.getDate() + diffToMon);
@@ -18,13 +23,20 @@ function getWeekBounds() {
   return { start: mon, end: sat };
 }
 
-// GET /api/exemptions?week=current
+function getWeekOffset(offset: number) {
+  const now = new Date();
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + offset * 7);
+  return getWeekBounds(targetDate.toISOString());
+}
+
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { week } = req.query;
+    const { week, weekOffset } = req.query;
     let where: any = {};
-    if (week === 'current') {
-      const { start, end } = getWeekBounds();
+    if (week === 'current' || week) {
+      const offset = weekOffset ? Number(weekOffset) : 0;
+      const { start, end } = getWeekOffset(offset);
       where = { exemptionDate: { gte: start, lte: end } };
     }
     const exemptions = await prisma.exemption.findMany({
@@ -39,7 +51,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/exemptions/already-exempted?date=...
 router.get('/already-exempted', async (req: Request, res: Response) => {
   try {
     const { date } = req.query;
@@ -61,7 +72,37 @@ router.get('/already-exempted', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/exemptions/pending — for chairman
+router.get('/by-student', async (req: Request, res: Response) => {
+  try {
+    const { studentId, fullName } = req.query;
+    const where: any = {};
+
+    if (studentId) {
+      where.students = { some: { studentId: Number(studentId) } };
+    } else if (fullName) {
+      // Find by studentId (if student exists in DB) or externalName
+      const student = await prisma.student.findFirst({ where: { fullName: fullName as string } });
+      where.students = {
+        some: student
+          ? { OR: [{ studentId: student.id }, { externalName: fullName as string }] }
+          : { externalName: fullName as string },
+      };
+    } else {
+      return res.status(400).json({ error: 'studentId or fullName required' });
+    }
+
+    const exemptions = await prisma.exemption.findMany({
+      where,
+      include: { coordinator: true, students: { include: { student: true } } },
+      orderBy: { exemptionDate: 'desc' },
+    });
+    res.json(exemptions);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.get('/pending', async (req: Request, res: Response) => {
   try {
     const exemptions = await prisma.exemption.findMany({
@@ -76,22 +117,14 @@ router.get('/pending', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/exemptions/all — for secretary, view all exemptions
 router.get('/all', async (req: Request, res: Response) => {
   try {
-    const { week } = req.query;
+    const { week, weekOffset } = req.query;
     let where: any = {};
-    if (week === 'current') {
-      const now = new Date();
-      const day = now.getDay();
-      const diffToMon = day === 0 ? -6 : 1 - day;
-      const mon = new Date(now);
-      mon.setHours(0, 0, 0, 0);
-      mon.setDate(now.getDate() + diffToMon);
-      const sat = new Date(mon);
-      sat.setDate(mon.getDate() + 5);
-      sat.setHours(23, 59, 59, 999);
-      where = { exemptionDate: { gte: mon, lte: sat } };
+    if (week === 'current' || week) {
+      const offset = weekOffset ? Number(weekOffset) : 0;
+      const { start, end } = getWeekOffset(offset);
+      where = { exemptionDate: { gte: start, lte: end } };
     }
     const exemptions = await prisma.exemption.findMany({
       where,
@@ -105,18 +138,12 @@ router.get('/all', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/exemptions
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { coordinatorId, exemptionDate, reason, studentIds, externalStudents } = req.body;
 
-    const { start, end } = getWeekBounds();
     const date = new Date(exemptionDate);
-    if (date < start || date > end) {
-      return res.status(400).json({ error: 'Можно выставлять освобождения только на текущей неделе' });
-    }
 
-    // Check if coordinator is chairman/deputy/secretary — auto-approve
     const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId } });
     const isChairman = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY' || coordinator?.role === 'SECRETARY';
     const status = isChairman ? 'APPROVED' : 'PENDING';
@@ -133,7 +160,6 @@ router.post('/', async (req: Request, res: Response) => {
             ...(externalStudents || []).map((s: any) => ({
               externalName: s.fullName,
               externalGroup: s.groupNumber,
-              externalCardNumber: s.studentCardNumber,
             })),
           ],
         },
@@ -142,10 +168,8 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
     if (isChairman) {
-      // Chairman's own — send full report with docx immediately
       await sendExemptionReport(exemption);
     } else {
-      // Coordinator — send pending notification to chairman
       await sendExemptionPending(exemption);
     }
 
@@ -156,7 +180,87 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/exemptions/:id/approve
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { reason, studentIds, externalStudents, exemptionDate, role } = req.body;
+    const id = Number(req.params.id);
+    const isAdmin = role && !['COORDINATOR'].includes(role as string);
+
+    const existing = await prisma.exemption.findUnique({
+      where: { id },
+      include: { students: true },
+    });
+    if (!existing) return res.status(404).json({ error: 'Exemption not found' });
+
+    if (existing.isExhibited && !isAdmin) {
+      return res.status(403).json({ error: 'Освобождение уже выставлено, редактирование недоступно' });
+    }
+
+    await prisma.exemptionStudent.deleteMany({ where: { exemptionId: id } });
+
+    const updated = await prisma.exemption.update({
+      where: { id },
+      data: {
+        ...(reason !== undefined && { reason }),
+        ...(exemptionDate !== undefined && { exemptionDate: new Date(exemptionDate) }),
+        editedAt: new Date(),
+        students: {
+          create: [
+            ...(studentIds || []).map((sid: number) => ({ studentId: sid })),
+            ...(externalStudents || []).map((s: any) => ({
+              externalName: s.fullName,
+              externalGroup: s.groupNumber,
+            })),
+          ],
+        },
+      },
+      include: { coordinator: true, students: { include: { student: true } } },
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const existing = await prisma.exemption.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Exemption not found' });
+
+    await prisma.exemptionStudent.deleteMany({ where: { exemptionId: id } });
+    await prisma.exemption.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/:id/toggle-exhibited', async (req: Request, res: Response) => {
+  try {
+    const { role } = req.body;
+    if (role !== 'CHAIRMAN' && role !== 'DEPUTY' && role !== 'DEAN' && role !== 'SECRETARY') {
+      return res.status(403).json({ error: 'Only chairman, deputy, dean, or secretary can toggle exhibited' });
+    }
+
+    const existing = await prisma.exemption.findUnique({ where: { id: Number(req.params.id) } });
+    if (!existing) return res.status(404).json({ error: 'Exemption not found' });
+
+    const exemption = await prisma.exemption.update({
+      where: { id: Number(req.params.id) },
+      data: { isExhibited: !existing.isExhibited },
+      include: { coordinator: true, students: { include: { student: true } } },
+    });
+    res.json(exemption);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.post('/:id/approve', async (req: Request, res: Response) => {
   try {
     const { role } = req.body;
@@ -170,7 +274,6 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
       include: { coordinator: true, students: { include: { student: true } } },
     });
 
-    // Send full report with docx to both chairman and secretary
     await sendExemptionReport(exemption);
 
     res.json(exemption);
@@ -180,7 +283,6 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/exemptions/:id/reject
 router.post('/:id/reject', async (req: Request, res: Response) => {
   try {
     const { role, rejectReason } = req.body;
@@ -194,7 +296,6 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
       include: { coordinator: true, students: { include: { student: true } } },
     });
 
-    // Notify the coordinator who submitted
     const { sendExemptionRejected } = require('../services/bot');
     await sendExemptionRejected(exemption, rejectReason);
 

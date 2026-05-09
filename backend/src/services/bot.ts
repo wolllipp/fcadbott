@@ -1,6 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { PrismaClient } from '@prisma/client';
 import { generateExemptionDoc } from './docGenerator';
+import { generatePetitionDoc } from './petitionDocGenerator';
 
 let bot: TelegramBot | null = null;
 const prisma = new PrismaClient();
@@ -21,6 +22,19 @@ export function initBot() {
       await prisma.coordinator.update({ where: { id: coordinator.id }, data: { chatId: String(msg.chat.id) } });
       bot!.sendMessage(msg.chat.id,
         `👋 Добро пожаловать, *${coordinator.fullName}*!\n\nОткройте Mini App через кнопку меню.`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    // Try to match as a student by telegramUsername
+    const student = await prisma.student.findFirst({
+      where: { telegramUsername: username },
+    });
+    if (student) {
+      await prisma.student.update({ where: { id: student.id }, data: { chatId: String(msg.chat.id) } });
+      bot!.sendMessage(msg.chat.id,
+        `👋 Привет, *${student.fullName}*!\n\nТеперь вы будете получать уведомления о новых мероприятиях.`,
         { parse_mode: 'Markdown' }
       );
     } else {
@@ -149,5 +163,119 @@ export async function sendBonusDoc(buffer: Buffer, filename: string, month: numb
         { filename, contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
       );
     } catch (e) { console.error(`Failed to send doc to ${chatId}:`, e); }
+  }
+}
+
+async function getStudentChatIds(): Promise<string[]> {
+  const students = await prisma.student.findMany({
+    where: { chatId: { not: null } },
+  });
+  return students.map((s) => s.chatId!).filter(Boolean);
+}
+
+export async function sendNewEvent(event: any) {
+  if (!bot) return;
+  const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+  const message =
+    `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n` +
+    `📌 *${event.name}*\n📅 Дата: *${dateStr}*\n` +
+    (event.description ? `📝 ${event.description}\n\n` : '\n') +
+    `Откройте приложение, чтобы записаться!`;
+
+  const chatIds = await getStudentChatIds();
+  for (const chatId of chatIds) {
+    try { await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
+  }
+}
+
+const PETITION_TYPE_LABELS: Record<string, string> = {
+  DISCOUNT: 'на скидку',
+  DORMITORY: 'на общежитие',
+  SPECIALIZATION: 'на профилизацию',
+};
+
+export async function sendPetitionApproved(petition: any) {
+  if (!bot) return;
+  const student = petition.student;
+  if (!student?.chatId) return;
+
+  const typeLabel = PETITION_TYPE_LABELS[petition.type] || petition.type;
+  const eventsList = petition.events.map((e: any) =>
+    `• ${e.eventName} (${new Date(e.eventDate).toLocaleDateString('ru-RU')})`
+  ).join('\n');
+
+  const message =
+    `✅ *Ходатайство одобрено!*\n━━━━━━━━━━━━━━━━━━━━\n` +
+    `Тип: *${typeLabel}*\n\n` +
+    `Мероприятия:\n${eventsList}\n\n` +
+    `📄 *Распечатай его и подпиши в 306-2*`;
+
+  try {
+    await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' });
+
+    const docBuffer = await generatePetitionDoc(petition);
+    const typeName = petition.type.toLowerCase();
+    await bot.sendDocument(student.chatId, docBuffer,
+      { caption: `📎 Ходатайство ${typeLabel}` },
+      { filename: `Ходатайство_${typeName}_${petition.id}.docx`, contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+    );
+  } catch (e) { console.error('sendPetitionApproved error:', e); }
+}
+
+export async function sendAttendedMarked(participantFullName: string, eventName: string, eventDate: Date) {
+  if (!bot) return;
+  const student = await prisma.student.findFirst({
+    where: { fullName: participantFullName, chatId: { not: null } },
+  });
+  if (!student?.chatId) return;
+
+  const dateStr = eventDate.toLocaleDateString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
+  const message =
+    `✅ *Вас отметили на мероприятии!*\n━━━━━━━━━━━━━━━━━━━━\n` +
+    `📌 *${eventName}*\n📅 Дата: *${dateStr}*\n\n` +
+    `Мероприятие пошло вам в копилку! 🎯`;
+
+  try {
+    await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' });
+  } catch (e) { console.error('sendAttendedMarked error:', e); }
+}
+
+export async function sendEventReminders() {
+  if (!bot) return;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const endOfTomorrow = new Date(tomorrow);
+  endOfTomorrow.setHours(23, 59, 59, 999);
+
+  const events = await prisma.event.findMany({
+    where: { eventDate: { gte: tomorrow, lte: endOfTomorrow } },
+    include: { participants: true },
+  });
+
+  for (const event of events) {
+    const dateStr = event.eventDate.toLocaleDateString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+    const message =
+      `⏰ *Напоминание!* Завтра мероприятие!\n━━━━━━━━━━━━━━━━━━━━\n` +
+      `📌 *${event.name}*\n📅 Дата: *${dateStr}*\n` +
+      (event.description ? `📝 ${event.description}\n` : '') +
+      `\nНе забудьте прийти!`;
+
+    for (const p of event.participants) {
+      const student = await prisma.student.findFirst({
+        where: { fullName: p.fullName, chatId: { not: null } },
+      });
+      if (!student?.chatId) continue;
+      try {
+        await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' });
+      } catch (e) { console.error(e); }
+    }
   }
 }

@@ -16,6 +16,10 @@ export const api = {
   auth: {
     verify: (initData: string, testUsername?: string) =>
       apiRequest('/auth/verify', { method: 'POST', body: JSON.stringify({ initData, testUsername }) }),
+    studentLogin: (telegramUsername: string) =>
+      apiRequest('/auth/student-login', { method: 'POST', body: JSON.stringify({ telegramUsername }) }),
+    studentRegister: (data: { fullName: string; studentCardNumber: string; telegramUsername: string }) =>
+      apiRequest('/auth/student-register', { method: 'POST', body: JSON.stringify(data) }),
   },
   students: {
     list: (params: { sector?: string; role?: string }) => {
@@ -24,11 +28,18 @@ export const api = {
     },
   },
   exemptions: {
-    list: (week?: string) => apiRequest(`/exemptions${week ? `?week=${week}` : ''}`),
-    all: (week?: string) => apiRequest(`/exemptions/all${week ? `?week=${week}` : ''}`),
+    list: (week?: string, weekOffset?: number) => apiRequest(`/exemptions${week ? `?week=${week}` : ''}${weekOffset ? `&weekOffset=${weekOffset}` : ''}`),
+    all: (week?: string, weekOffset?: number) => apiRequest(`/exemptions/all${week ? `?week=${week}` : ''}${weekOffset ? `&weekOffset=${weekOffset}` : ''}`),
     alreadyExempted: (date: string) => apiRequest(`/exemptions/already-exempted?date=${date}`),
+    byStudent: (params: { studentId?: number; fullName?: string }) => {
+      const q = new URLSearchParams(params as any).toString();
+      return apiRequest(`/exemptions/by-student?${q}`);
+    },
     pending: () => apiRequest('/exemptions/pending'),
     create: (data: any) => apiRequest('/exemptions', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: any) => apiRequest(`/exemptions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => apiRequest(`/exemptions/${id}`, { method: 'DELETE' }),
+    toggleExhibited: (id: number, role: string) => apiRequest(`/exemptions/${id}/toggle-exhibited`, { method: 'POST', body: JSON.stringify({ role }) }),
     approve: (id: number, role: string) => apiRequest(`/exemptions/${id}/approve`, { method: 'POST', body: JSON.stringify({ role }) }),
     reject: (id: number, role: string, rejectReason?: string) => apiRequest(`/exemptions/${id}/reject`, { method: 'POST', body: JSON.stringify({ role, rejectReason }) }),
   },
@@ -43,5 +54,56 @@ export const api = {
     approve: (id: number, role: string) => apiRequest(`/bonuses/${id}/approve`, { method: 'POST', body: JSON.stringify({ role }) }),
     deferEntry: (entryId: number, data: any) => apiRequest(`/bonuses/entry/${entryId}/defer`, { method: 'POST', body: JSON.stringify(data) }),
     addEntry: (id: number, data: any) => apiRequest(`/bonuses/${id}/add-entry`, { method: 'POST', body: JSON.stringify(data) }),
+  },
+  sectors: {
+    list: () => apiRequest('/sectors'),
+    my: (coordinatorId: number) => apiRequest(`/sectors/my?coordinatorId=${coordinatorId}`),
+    create: (data: { coordinatorId: number; name: string }) => apiRequest('/sectors', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: { name: string }) => apiRequest(`/sectors/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number) => apiRequest(`/sectors/${id}`, { method: 'DELETE' }),
+    addMember: (sectorId: number, data: { fullName: string; groupNumber: string; studentCardNumber: string }) => apiRequest(`/sectors/${sectorId}/members`, { method: 'POST', body: JSON.stringify(data) }),
+    removeMember: (sectorId: number, memberId: number) => apiRequest(`/sectors/${sectorId}/members/${memberId}`, { method: 'DELETE' }),
+  },
+  events: {
+    list: () => apiRequest('/events'),
+    byStudent: (fullName: string) => apiRequest(`/events/by-student?fullName=${encodeURIComponent(fullName)}`),
+    create: (data: { name: string; eventDate: string; description?: string; coordinatorId: number; role?: string }) => apiRequest('/events', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: { name?: string; eventDate?: string; description?: string; coordinatorId: number; role?: string }) => apiRequest(`/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: number, data: { coordinatorId: number; role?: string }) => apiRequest(`/events/${id}`, { method: 'DELETE', body: JSON.stringify(data) }),
+    addParticipant: (eventId: number, data: { fullName: string; groupNumber: string; attended?: boolean; role?: string }) => apiRequest(`/events/${eventId}/participants`, { method: 'POST', body: JSON.stringify(data) }),
+    updateParticipant: (eventId: number, participantId: number, data: { fullName?: string; groupNumber?: string; attended?: boolean; role?: string }) => apiRequest(`/events/${eventId}/participants/${participantId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    removeParticipant: (eventId: number, participantId: number) => apiRequest(`/events/${eventId}/participants/${participantId}`, { method: 'DELETE' }),
+    generateExemption: (eventId: number, data: { coordinatorId: number; exemptionDate: string; reason?: string }) => apiRequest(`/events/${eventId}/generate-exemption`, { method: 'POST', body: JSON.stringify(data) }),
+    finalizeAttendance: (eventId: number, data: { coordinatorId: number; role?: string }) => apiRequest(`/events/${eventId}/finalize-attendance`, { method: 'POST', body: JSON.stringify(data) }),
+  },
+  council: {
+    students: {
+      list: () => apiRequest('/council/students'),
+      create: (data: { creatorId: number; fullName: string; groupNumber: string; studentCardNumber: string; budgetStatus?: string; sectors?: string[] }) => apiRequest('/council/students', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: number, data: { creatorId: number; fullName: string; groupNumber: string; studentCardNumber: string; budgetStatus?: string; sectors?: string[] }) => apiRequest(`/council/students/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (id: number, creatorId: number) => apiRequest(`/council/students/${id}`, { method: 'DELETE', body: JSON.stringify({ creatorId }) }),
+    },
+    coordinators: {
+      list: () => apiRequest('/council/coordinators'),
+      create: (data: { creatorId: number; fullName: string; telegramUsername: string; role: string; sector?: string }) => apiRequest('/council/coordinators', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: number, data: { creatorId: number; fullName: string; telegramUsername: string; role: string; sector?: string }) => apiRequest(`/council/coordinators/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (id: number, creatorId: number) => apiRequest(`/council/coordinators/${id}`, { method: 'DELETE', body: JSON.stringify({ creatorId }) }),
+    },
+    sectorOverview: () => apiRequest('/council/sector-overview'),
+    assignSector: (studentId: number, creatorId: number, sector: string) => apiRequest(`/council/students/${studentId}/sector`, { method: 'POST', body: JSON.stringify({ creatorId, sector }) }),
+    removeSector: (studentId: number, creatorId: number, sector: string) => apiRequest(`/council/students/${studentId}/sector`, { method: 'DELETE', body: JSON.stringify({ creatorId, sector }) }),
+  },
+  petitions: {
+    list: (params: { studentId?: number; role?: string }) => {
+      const q = new URLSearchParams(params as any).toString();
+      return apiRequest(`/petitions?${q}`);
+    },
+    create: (data: { studentId: number; type: string; eventIds: number[] }) =>
+      apiRequest('/petitions', { method: 'POST', body: JSON.stringify(data) }),
+    approve: (id: number, role: string) =>
+      apiRequest(`/petitions/${id}/approve`, { method: 'POST', body: JSON.stringify({ role }) }),
+    reject: (id: number, role: string) =>
+      apiRequest(`/petitions/${id}/reject`, { method: 'POST', body: JSON.stringify({ role }) }),
+    downloadUrl: (id: number) => `/api/petitions/${id}/download`,
   },
 };

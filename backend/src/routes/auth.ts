@@ -88,4 +88,57 @@ router.post('/verify', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/student-register', async (req: Request, res: Response) => {
+  try {
+    const { fullName, studentCardNumber, telegramUsername } = req.body;
+    if (!fullName || !studentCardNumber || !telegramUsername) {
+      return res.status(400).json({ error: 'fullName, studentCardNumber и telegramUsername обязательны' });
+    }
+
+    const student = await prisma.student.findFirst({
+      where: { fullName, studentCardNumber },
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Студент с такими данными не найден. Проверьте ФИО и номер студенческого билета.' });
+    }
+
+    if (student.telegramUsername) {
+      return res.status(409).json({ error: 'Этот студент уже привязан к другому Telegram аккаунту' });
+    }
+
+    const updated = await prisma.student.update({
+      where: { id: student.id },
+      data: { telegramUsername: telegramUsername.replace('@', '') },
+    });
+
+    res.json({ student: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/student-login', async (req: Request, res: Response) => {
+  try {
+    const { telegramUsername } = req.body;
+    if (!telegramUsername) {
+      return res.status(400).json({ error: 'telegramUsername обязателен' });
+    }
+
+    const student = await prisma.student.findFirst({
+      where: { telegramUsername: telegramUsername.replace('@', '') },
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Студент не найден. Пройдите регистрацию.' });
+    }
+
+    res.json({ student });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 export { router as authRouter };

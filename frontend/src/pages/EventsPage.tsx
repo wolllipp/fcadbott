@@ -1,0 +1,518 @@
+import React, { useState, useEffect } from 'react';
+import { Coordinator } from '../App';
+import { api } from '../utils/api';
+
+interface EventData {
+  id: number;
+  name: string;
+  eventDate: string;
+  description: string | null;
+  createdBy: number;
+  attendanceFinalized: boolean;
+  participants: EventParticipant[];
+}
+
+interface EventParticipant {
+  id: number;
+  eventId: number;
+  fullName: string;
+  groupNumber: string;
+  attended: boolean;
+}
+
+type Step = 'list' | 'create' | 'detail' | 'edit' | 'add-participant';
+
+function fmtDate(d: string) {
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
+}
+
+interface Props {
+  coordinator: Coordinator;
+}
+
+export default function EventsPage({ coordinator }: Props) {
+  const [step, setStep] = useState<Step>('list');
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
+  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '' });
+  const [newParticipant, setNewParticipant] = useState({ fullName: '', groupNumber: '' });
+  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '' });
+  const [exemptionDate, setExemptionDate] = useState('');
+  const [exemptionReason, setExemptionReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [councilStudents, setCouncilStudents] = useState<any[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<number>>(new Set());
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualStudent, setManualStudent] = useState({ fullName: '', groupNumber: '' });
+  const [externalParticipants, setExternalParticipants] = useState<{ fullName: string; groupNumber: string }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('extParticipants') || '[]'); } catch { return []; }
+  });
+  const [selectedExternalIndices, setSelectedExternalIndices] = useState<Set<number>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => { loadEvents(); }, []);
+
+  useEffect(() => {
+    localStorage.setItem('extParticipants', JSON.stringify(externalParticipants));
+  }, [externalParticipants]);
+
+  useEffect(() => {
+    if (step === 'add-participant') {
+      api.council.students.list().then(setCouncilStudents).catch(() => {});
+      setSelectedStudentIds(new Set());
+      setSelectedExternalIndices(new Set());
+      setSearchQuery('');
+    }
+  }, [step]);
+
+  async function loadEvents() {
+    setLoading(true);
+    try {
+      const data = await api.events.list();
+      setEvents(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createEvent() {
+    if (!newEvent.name || !newEvent.eventDate) return;
+    setSubmitting(true);
+    try {
+      await api.events.create({ ...newEvent, coordinatorId: coordinator.id, role: coordinator.role });
+      setNewEvent({ name: '', eventDate: '', description: '' });
+      setStep('list');
+      await loadEvents();
+    } catch (e: any) { alert(e.message); }
+    finally { setSubmitting(false); }
+  }
+
+  async function updateEvent() {
+    if (!selectedEvent || !editingEvent.name || !editingEvent.eventDate) return;
+    setSubmitting(true);
+    try {
+      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role });
+      setStep('list');
+      await loadEvents();
+    } catch (e: any) { alert(e.message); }
+    finally { setSubmitting(false); }
+  }
+
+  async function deleteEvent(id: number) {
+    if (!confirm('Удалить мероприятие и всех участников?')) return;
+    try {
+      await api.events.remove(id, { coordinatorId: coordinator.id, role: coordinator.role });
+      await loadEvents();
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function addParticipant() {
+    if (!selectedEvent || !newParticipant.fullName || !newParticipant.groupNumber) return;
+    try {
+      await api.events.addParticipant(selectedEvent.id, { ...newParticipant, attended: false, role: coordinator.role });
+      setNewParticipant({ fullName: '', groupNumber: '' });
+      setStep('detail');
+      await loadEvents();
+      const updated = await api.events.list();
+      setSelectedEvent(updated.find((e: EventData) => e.id === selectedEvent.id) || null);
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function toggleAttendance(participantId: number) {
+    if (!selectedEvent) return;
+    const participant = selectedEvent.participants.find((p) => p.id === participantId);
+    if (!participant) return;
+    try {
+      await api.events.updateParticipant(selectedEvent.id, participantId, { attended: !participant.attended, role: coordinator.role });
+      setSelectedEvent((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          participants: prev.participants.map((p) =>
+            p.id === participantId ? { ...p, attended: !p.attended } : p
+          ),
+        };
+      });
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function addSelectedParticipants() {
+    if (!selectedEvent) return;
+    const selected = councilStudents.filter((s) => selectedStudentIds.has(s.id));
+    for (const s of selected) {
+      try {
+        await api.events.addParticipant(selectedEvent.id, { fullName: s.fullName, groupNumber: s.groupNumber, attended: false, role: coordinator.role });
+      } catch (_) {}
+    }
+    setStep('detail');
+    await loadEvents();
+    const updated = await api.events.list();
+    setSelectedEvent(updated.find((e: EventData) => e.id === selectedEvent.id) || null);
+  }
+
+  async function addManualParticipant() {
+    if (!selectedEvent || !manualStudent.fullName || !manualStudent.groupNumber) return;
+    try {
+      await api.events.addParticipant(selectedEvent.id, { ...manualStudent, attended: false, role: coordinator.role });
+      const entry = { fullName: manualStudent.fullName, groupNumber: manualStudent.groupNumber };
+      setExternalParticipants((prev) => {
+        if (prev.some((p) => p.fullName === entry.fullName)) return prev;
+        return [...prev, entry];
+      });
+      setManualStudent({ fullName: '', groupNumber: '' });
+      setShowManualModal(false);
+      setStep('detail');
+      await loadEvents();
+      const updated = await api.events.list();
+      setSelectedEvent(updated.find((e: EventData) => e.id === selectedEvent.id) || null);
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function addSelectedExternal() {
+    if (!selectedEvent) return;
+    const selected = externalParticipants.filter((_, i) => selectedExternalIndices.has(i));
+    for (const s of selected) {
+      try {
+        await api.events.addParticipant(selectedEvent.id, { fullName: s.fullName, groupNumber: s.groupNumber, attended: false, role: coordinator.role });
+      } catch (_) {}
+    }
+    setStep('detail');
+    await loadEvents();
+    const updated = await api.events.list();
+    setSelectedEvent(updated.find((e: EventData) => e.id === selectedEvent.id) || null);
+  }
+
+  async function removeParticipant(participantId: number) {
+    if (!selectedEvent) return;
+    if (!confirm('Удалить участника?')) return;
+    try {
+      await api.events.removeParticipant(selectedEvent.id, participantId);
+      setSelectedEvent((prev) => {
+        if (!prev) return prev;
+        return { ...prev, participants: prev.participants.filter((p) => p.id !== participantId) };
+      });
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function generateExemption() {
+    if (!selectedEvent) return;
+    setSubmitting(true);
+    try {
+      await api.events.generateExemption(selectedEvent.id, {
+        coordinatorId: coordinator.id,
+        exemptionDate: exemptionDate || selectedEvent.eventDate,
+        reason: exemptionReason || selectedEvent.name,
+      });
+      alert('Докладная отправлена!');
+      setExemptionDate('');
+      setExemptionReason('');
+      setStep('list');
+    } catch (e: any) { alert(e.message); }
+    finally { setSubmitting(false); }
+  }
+
+  const isAdmin = !['COORDINATOR'].includes(coordinator.role);
+  const attendedCount = selectedEvent?.participants.filter((p) => p.attended).length || 0;
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
+        {step !== 'list' && (
+          <button onClick={() => { setStep(step === 'add-participant' ? 'detail' : 'list'); if (step !== 'add-participant') setSelectedEvent(null); }}
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)', marginBottom: 12 }}>
+            ← Назад
+          </button>
+        )}
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
+          {step === 'create' ? 'Новое мероприятие' : step === 'edit' ? 'Редактировать' : step === 'add-participant' ? 'Добавить участника' : step === 'detail' ? selectedEvent?.name : 'Мероприятия'}
+        </h1>
+      </div>
+
+      <div className="page-scroll" style={{ padding: '0 16px' }}>
+        {step === 'list' && (
+          <>
+            <button className="btn btn-primary" onClick={() => setStep('create')} style={{ marginBottom: 16 }}>
+              + Создать мероприятие
+            </button>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Загрузка...</div>
+            ) : events.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 14 }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>○</div>
+                Мероприятий пока нет
+              </div>
+            ) : (
+              events.map((ev, i) => (
+                <div key={ev.id} className="card" style={{ marginBottom: 10, cursor: 'pointer', animation: `fadeIn 0.25s ease ${i * 0.04}s both` }}
+                  onClick={() => { setSelectedEvent(ev); setStep('detail'); }}>
+                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>{ev.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{fmtDate(ev.eventDate)}</div>
+                  {ev.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{ev.description}</div>}
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                    <span>Участников: {ev.participants.length}</span>
+                    <span>Было: {ev.participants.filter((p) => p.attended).length}</span>
+                  </div>
+                  {(isAdmin || (ev.createdBy === coordinator.id && !ev.attendanceFinalized)) && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '' }); setStep('edit'); }}
+                        style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 15 }}>
+                        ✎
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); deleteEvent(ev.id); }}
+                        style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 12, padding: '4px 10px' }}>
+                        Удалить
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </>
+        )}
+
+        {(step === 'create' || step === 'edit') && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="section-label">Название *</div>
+            <input className="input" placeholder="Название мероприятия"
+              value={step === 'create' ? newEvent.name : editingEvent.name}
+              onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, name: e.target.value }) : setEditingEvent({ ...editingEvent, name: e.target.value })} />
+            <div className="section-label">Дата *</div>
+            <input className="input" type="date"
+              value={step === 'create' ? newEvent.eventDate : editingEvent.eventDate}
+              onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, eventDate: e.target.value }) : setEditingEvent({ ...editingEvent, eventDate: e.target.value })} />
+            <div className="section-label">Описание</div>
+            <textarea className="input" placeholder="Описание (необязательно)" rows={3} style={{ resize: 'none' }}
+              value={step === 'create' ? newEvent.description : editingEvent.description}
+              onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, description: e.target.value }) : setEditingEvent({ ...editingEvent, description: e.target.value })} />
+            <button className="btn btn-primary" disabled={submitting || !(step === 'create' ? (newEvent.name && newEvent.eventDate) : (editingEvent.name && editingEvent.eventDate))}
+              onClick={step === 'create' ? createEvent : updateEvent}>
+              {submitting ? '...' : (step === 'create' ? 'Создать' : 'Сохранить')}
+            </button>
+          </div>
+        )}
+
+        {step === 'detail' && selectedEvent && (
+          <>
+            <div className="card" style={{ marginBottom: 14, animation: 'fadeIn 0.25s ease both' }}>
+              <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 4 }}>{selectedEvent.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{fmtDate(selectedEvent.eventDate)}</div>
+              {selectedEvent.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{selectedEvent.description}</div>}
+            </div>
+
+            <div className="section-label" style={{ marginBottom: 10 }}>
+              Участники ({attendedCount}/{selectedEvent.participants.length})
+            </div>
+
+            {selectedEvent.participants.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: 14 }}>Нет участников</div>
+            ) : (
+              selectedEvent.participants.map((p, i) => (
+                <div key={p.id} className="card" style={{ marginBottom: 8, padding: '10px 12px', animation: `fadeIn 0.2s ease ${i * 0.03}s both` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, fontSize: 14 }}>{p.fullName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {p.groupNumber}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {selectedEvent.attendanceFinalized && !isAdmin ? (
+                        <span style={{
+                          background: p.attended ? 'var(--success-dim)' : 'var(--bg-raised)',
+                          border: `1px solid ${p.attended ? 'var(--success)' : 'var(--border)'}`,
+                          borderRadius: 20, padding: '4px 12px',
+                          color: p.attended ? 'var(--success)' : 'var(--text-muted)',
+                          fontSize: 11, fontWeight: 600, opacity: 0.8,
+                        }}>
+                          {p.attended ? '✓ Был' : '✗ Не явился'}
+                        </span>
+                      ) : (
+                        <button onClick={() => toggleAttendance(p.id)}
+                          style={{
+                            background: p.attended ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                            border: `1px solid ${p.attended ? 'var(--accent)' : 'var(--border)'}`,
+                            borderRadius: 20, padding: '4px 12px', cursor: 'pointer',
+                            color: p.attended ? 'var(--accent)' : 'var(--text-muted)',
+                            fontSize: 11, fontWeight: 600,
+                          }}>
+                          {p.attended ? '✓ Был' : '○ Не явился'}
+                        </button>
+                      )}
+                      <button onClick={() => removeParticipant(p.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 16, padding: 4 }}>×</button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {(!selectedEvent.attendanceFinalized || isAdmin) && (isAdmin || selectedEvent.createdBy === coordinator.id) && (
+              <button className="btn btn-ghost" onClick={async () => {
+                if (!confirm('Завершить отметку? Неотмеченные участники будут считаться не явившимися.')) return;
+                try {
+                  await api.events.finalizeAttendance(selectedEvent.id, { coordinatorId: coordinator.id, role: coordinator.role });
+                  const updated = await api.events.list();
+                  setSelectedEvent(updated.find((e: any) => e.id === selectedEvent.id) || null);
+                } catch (e: any) { alert(e.message); }
+              }} style={{ marginTop: 6, color: 'var(--warning)', borderColor: 'var(--warning)', fontSize: 13, padding: '8px' }}>
+                Завершить отметку
+              </button>
+            )}
+
+            {attendedCount > 0 && (
+              <div className="card" style={{ marginTop: 16, borderColor: 'var(--accent)', animation: 'fadeIn 0.25s ease both' }}>
+                <div className="section-label">Сформировать докладную</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Будет включено {attendedCount} участн. (кто был на мероприятии)
+                  </div>
+                  <input className="input" type="date" placeholder="Дата освобождения" value={exemptionDate}
+                    onChange={(e) => setExemptionDate(e.target.value)} />
+                  <input className="input" placeholder="Причина (по умолчанию: название мероприятия)" value={exemptionReason}
+                    onChange={(e) => setExemptionReason(e.target.value)} />
+                </div>
+                <button className="btn btn-primary" disabled={submitting} onClick={generateExemption}>
+                  {submitting ? '...' : '✓ Сформировать докладную'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {step === 'add-participant' && selectedEvent && (
+          <div style={{ paddingBottom: 16 }}>
+            <input className="input" placeholder="Поиск по имени…" value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ marginBottom: 10 }} />
+            <div style={{ marginBottom: 6 }}>Студенческий совет:</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {councilStudents
+                .filter((s: any) => !selectedEvent.participants.some((p) => p.fullName === s.fullName))
+                .filter((s: any) => s.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((s: any, i: number) => {
+                const checked = selectedStudentIds.has(s.id);
+                return (
+                  <label key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', marginBottom: 0, userSelect: 'none', animation: `fadeIn 0.2s ease ${i * 0.03}s both` }}
+                    onClick={() => {
+                      const next = new Set(selectedStudentIds);
+                      next.has(s.id) ? next.delete(s.id) : next.add(s.id);
+                      setSelectedStudentIds(next);
+                    }}>
+                    <div style={{
+                      width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                      border: `2px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                      background: checked ? 'var(--accent)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: '0.15s',
+                    }}>
+                      {checked && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: 14 }}>{s.fullName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
+                    </div>
+                  </label>
+                );
+              })}
+              {councilStudents.filter((s: any) => !selectedEvent.participants.some((p) => p.fullName === s.fullName)).filter((s: any) => s.fullName.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>
+                  {searchQuery ? 'Ничего не найдено' : 'Нет доступных участников из студсовета'}
+                </div>
+              )}
+            </div>
+
+            {externalParticipants.filter((p) => !selectedEvent.participants.some((ep) => ep.fullName === p.fullName)).length > 0 && (
+              <>
+                <div style={{ marginTop: 16, marginBottom: 6 }}>Ранее добавленные:</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {externalParticipants.filter((p) => !selectedEvent.participants.some((ep) => ep.fullName === p.fullName)).map((p, rawIndex) => {
+                    const idx = externalParticipants.indexOf(p);
+                    const checked = selectedExternalIndices.has(idx);
+                    return (
+                      <label key={`ext-${idx}`} className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer', marginBottom: 0, userSelect: 'none', animation: `fadeIn 0.2s ease ${rawIndex * 0.03}s both` }}
+                        onClick={() => {
+                          const next = new Set(selectedExternalIndices);
+                          next.has(idx) ? next.delete(idx) : next.add(idx);
+                          setSelectedExternalIndices(next);
+                        }}>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                          border: `2px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                          background: checked ? 'var(--accent)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: '0.15s',
+                        }}>
+                          {checked && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: 14 }}>{p.fullName}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {p.groupNumber}</div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {showManualModal && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.15s ease',
+          }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} onClick={() => setShowManualModal(false)} />
+            <div className="card" style={{
+              position: 'relative', zIndex: 1, width: '85%', maxWidth: 360,
+              animation: 'scaleIn 0.2s ease',
+              display: 'flex', flexDirection: 'column', gap: 10, padding: 20,
+            }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Добавить участника</div>
+              <div className="section-label">ФИО *</div>
+              <input className="input" placeholder="ФИО участника" value={manualStudent.fullName}
+                onChange={(e) => setManualStudent({ ...manualStudent, fullName: e.target.value })} />
+              <div className="section-label">Номер группы *</div>
+              <input className="input" placeholder="Номер группы" value={manualStudent.groupNumber}
+                onChange={(e) => setManualStudent({ ...manualStudent, groupNumber: e.target.value })} />
+              <button className="btn btn-primary" disabled={!manualStudent.fullName || !manualStudent.groupNumber} onClick={addManualParticipant} style={{ marginTop: 4 }}>
+                Добавить
+              </button>
+              <button onClick={() => setShowManualModal(false)}
+                style={{ width: '100%', background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, marginTop: 4 }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {step === 'detail' && (!selectedEvent?.attendanceFinalized || isAdmin) && (
+        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg)', animation: 'fadeIn 0.2s ease both' }}>
+          <button onClick={() => setStep('add-participant')} className="btn btn-primary" style={{ width: '100%', textAlign: 'center' }}>
+            + Добавить участников
+          </button>
+        </div>
+      )}
+
+      {step === 'add-participant' && (
+        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', gap: 8, animation: 'fadeIn 0.2s ease both' }}>
+          <button className="btn btn-primary" disabled={selectedStudentIds.size === 0 && selectedExternalIndices.size === 0}
+            onClick={async () => {
+              if (selectedStudentIds.size > 0) await addSelectedParticipants();
+              if (selectedExternalIndices.size > 0) await addSelectedExternal();
+            }} style={{ width: '100%', textAlign: 'center' }}>
+            Добавить выбранных ({selectedStudentIds.size + selectedExternalIndices.size})
+          </button>
+          <button onClick={() => setShowManualModal(true)}
+            style={{ width: '100%', background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px', color: 'var(--text)', cursor: 'pointer', fontSize: 14 }}>
+            + Добавить не из СС
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -11,7 +11,7 @@ export interface Student {
 export interface ExternalStudent {
   fullName: string;
   groupNumber: string;
-  studentCardNumber: string;
+  studentCardNumber?: string;
 }
 
 interface Props {
@@ -21,9 +21,10 @@ interface Props {
   onToggle: (id: number) => void;
   onExternalChange: (students: ExternalStudent[]) => void;
   alreadyExemptedIds?: number[];
+  showStudentCard?: boolean;
 }
 
-export default function StudentPicker({ students, selectedIds, externalStudents, onToggle, onExternalChange, alreadyExemptedIds = [] }: Props) {
+export default function StudentPicker({ students, selectedIds, externalStudents, onToggle, onExternalChange, alreadyExemptedIds = [], showStudentCard = false }: Props) {
   const [search, setSearch] = useState('');
   const [showExternal, setShowExternal] = useState(false);
 
@@ -46,6 +47,11 @@ export default function StudentPicker({ students, selectedIds, externalStudents,
     onExternalChange(externalStudents.filter((_, idx) => idx !== i));
   }
 
+  function isValidExternal(e: ExternalStudent) {
+    if (showStudentCard) return e.fullName && e.groupNumber && e.studentCardNumber;
+    return e.fullName && e.groupNumber;
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
@@ -55,7 +61,7 @@ export default function StudentPicker({ students, selectedIds, externalStudents,
       {selectedIds.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 12px', background: 'var(--accent-dim)', borderRadius: 'var(--radius-sm)' }}>
           <span style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>
-            ✓ Выбрано: {selectedIds.length + externalStudents.filter(e => e.fullName && e.studentCardNumber).length}
+            ✓ Выбрано: {selectedIds.length + externalStudents.filter(isValidExternal).length}
           </span>
         </div>
       )}
@@ -109,7 +115,9 @@ export default function StudentPicker({ students, selectedIds, externalStudents,
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <input className="input" placeholder="ФИО *" value={ext.fullName} onChange={(e) => updateExternal(i, 'fullName', e.target.value)} />
                   <input className="input" placeholder="Номер группы *" value={ext.groupNumber} onChange={(e) => updateExternal(i, 'groupNumber', e.target.value)} />
-                  <input className="input" placeholder="Номер студенческого *" value={ext.studentCardNumber} onChange={(e) => updateExternal(i, 'studentCardNumber', e.target.value)} />
+                  {showStudentCard && (
+                    <input className="input" placeholder="Номер студенческого *" value={ext.studentCardNumber || ''} onChange={(e) => updateExternal(i, 'studentCardNumber', e.target.value)} />
+                  )}
                 </div>
               </div>
             ))}

@@ -87,7 +87,7 @@ export default function BonusesPage({ coordinator }: Props) {
         budgetStatus: (s as any).budgetStatus,
         budgetStudentName: '', budgetStudentGroup: '', budgetStudentCard: '',
       })),
-      ...externalStudents.filter((e) => e.fullName && e.studentCardNumber).map((e) => ({
+      ...externalStudents.filter((e) => e.fullName && e.groupNumber && e.studentCardNumber).map((e) => ({
         externalName: e.fullName, externalGroup: e.groupNumber, externalCardNumber: e.studentCardNumber,
         fullName: e.fullName, groupNumber: e.groupNumber,
         amount: '', reason: 'Организация мероприятий на факультете и в университете и участие в них',
@@ -259,7 +259,7 @@ export default function BonusesPage({ coordinator }: Props) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 500);
-      alert(`✅ Докладная сформирована и отправлена в Telegram`);
+      alert(`Докладная сформирована и отправлена в Telegram`);
     } catch (err: any) { alert(err.message); }
     finally { setGeneratingDoc(false); }
   }
@@ -433,13 +433,13 @@ export default function BonusesPage({ coordinator }: Props) {
       {step === 'pick' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           <div style={{ padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-            📅 {MONTH_NAMES[currentMonth]} {currentYear}
+            ◎ {MONTH_NAMES[currentMonth]} {currentYear}
           </div>
           <StudentPicker students={students} selectedIds={selectedIds} externalStudents={externalStudents}
-            onToggle={toggleStudent} onExternalChange={setExternalStudents} />
+            onToggle={toggleStudent} onExternalChange={setExternalStudents} showStudentCard />
           <div style={{ marginTop: 16 }}>
             <button className="btn btn-primary"
-              disabled={selectedIds.length === 0 && externalStudents.filter(e => e.fullName && e.studentCardNumber).length === 0}
+              disabled={selectedIds.length === 0 && externalStudents.filter(e => e.fullName && e.groupNumber && e.studentCardNumber).length === 0}
               onClick={proceedToAmounts}>
               Далее: суммы →
             </button>
@@ -529,7 +529,7 @@ export default function BonusesPage({ coordinator }: Props) {
             <span style={{ fontWeight: 700, color: 'var(--accent)', fontSize: 18 }}>{getTotal()} BYN</span>
           </div>
           <button className="btn btn-primary" disabled={submitting} onClick={submit}>
-            {submitting ? 'Отправка...' : '★ Выписать премии'}
+            {submitting ? 'Отправка...' : '◇ Выписать премии'}
           </button>
           <div style={{ height: 20 }} />
         </div>

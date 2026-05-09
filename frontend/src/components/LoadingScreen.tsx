@@ -20,7 +20,7 @@ export default function LoadingScreen() {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 32,
-      }}>🎓</div>
+      }}>◈</div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 6 }}>СС ФКП</div>
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Загрузка...</div>

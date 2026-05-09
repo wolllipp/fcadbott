@@ -1,18 +1,35 @@
 import React from 'react';
-import { Tab } from '../App';
+import { Coordinator, Tab } from '../App';
 
 interface Props {
   active: Tab;
   onChange: (tab: Tab) => void;
+  coordinator: Coordinator;
 }
 
-const tabs: { id: Tab; icon: string; label: string }[] = [
+const baseTabs: { id: Tab; icon: string; label: string }[] = [
+  { id: 'sector', icon: '◈', label: '' },
+  { id: 'exemptions', icon: '◎', label: 'Освобождения' },
   { id: 'home', icon: '⌂', label: 'Главная' },
-  { id: 'exemptions', icon: '📋', label: 'Освобождения' },
-  { id: 'bonuses', icon: '★', label: 'Премии' },
+  { id: 'bonuses', icon: '◇', label: 'Премии' },
+  { id: 'events', icon: '☰', label: 'Мероприятия' },
 ];
 
-export default function NavBar({ active, onChange }: Props) {
+export default function NavBar({ active, onChange, coordinator }: Props) {
+  const isAdmin = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN' || coordinator.role === 'SECRETARY';
+
+  const canSeePetitions = isAdmin;
+
+  const finalTabs = [
+    ...baseTabs.map((t) => {
+      if (t.id === 'sector') {
+        return { ...t, label: isAdmin ? 'Студсовет' : 'Сектор' };
+      }
+      return t;
+    }),
+    ...(canSeePetitions ? [{ id: 'petitions' as Tab, icon: '✎', label: 'Ходатайства' }] : []),
+  ];
+
   return (
     <nav style={{
       height: 'calc(var(--nav-height) + var(--safe-bottom))',
@@ -25,7 +42,7 @@ export default function NavBar({ active, onChange }: Props) {
       zIndex: 100,
       flexShrink: 0,
     }}>
-      {tabs.map((t) => (
+      {finalTabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
@@ -52,7 +69,7 @@ export default function NavBar({ active, onChange }: Props) {
             {t.icon}
           </span>
           <span style={{
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: active === t.id ? 600 : 400,
             letterSpacing: '0.02em',
           }}>

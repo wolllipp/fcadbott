@@ -41,10 +41,35 @@ model Coordinator {
   sector           String?
   chatId           String?
 
+  managedSector    Sector?
   exemptions       Exemption[]
+  events           Event[]
   bonusSubmissions BonusSubmission[]
 
   createdAt DateTime @default(now())
+}
+
+model Sector {
+  id             Int          @id @default(autoincrement())
+  name           String       @unique
+  coordinatorId  Int          @unique
+  coordinator    Coordinator  @relation(fields: [coordinatorId], references: [id])
+
+  members        SectorMember[]
+
+  createdAt DateTime @default(now())
+}
+
+model SectorMember {
+  id        Int    @id @default(autoincrement())
+  sectorId  Int
+  sector    Sector @relation(fields: [sectorId], references: [id])
+
+  fullName          String
+  groupNumber       String
+  studentCardNumber String
+
+  @@unique([sectorId, fullName, groupNumber])
 }
 
 model Student {
@@ -53,11 +78,14 @@ model Student {
   birthDate         DateTime?
   groupNumber       String
   studentCardNumber String
+  telegramUsername  String?      @unique
+  chatId            String?
   sectors           String[]
   budgetStatus      BudgetStatus @default(BUDGET)
 
   exemptionStudents ExemptionStudent[]
   bonusEntries      BonusEntry[]
+  petitions         Petition[]
 }
 
 model Exemption {
@@ -67,6 +95,8 @@ model Exemption {
   createdBy      Int
   coordinator    Coordinator     @relation(fields: [createdBy], references: [id])
   status         ExemptionStatus @default(PENDING)
+  isExhibited    Boolean         @default(false)
+  editedAt       DateTime?
   createdAt      DateTime        @default(now())
 
   students ExemptionStudent[]
@@ -82,6 +112,30 @@ model ExemptionStudent {
   externalName        String?
   externalGroup       String?
   externalCardNumber  String?
+}
+
+model Event {
+  id          Int    @id @default(autoincrement())
+  name        String
+  eventDate   DateTime
+  description String?
+  createdBy   Int
+  attendanceFinalized Boolean @default(false)
+
+  creator      Coordinator        @relation(fields: [createdBy], references: [id])
+  participants EventParticipant[]
+
+  createdAt DateTime @default(now())
+}
+
+model EventParticipant {
+  id          Int   @id @default(autoincrement())
+  eventId     Int
+  event       Event @relation(fields: [eventId], references: [id])
+
+  fullName    String
+  groupNumber String
+  attended    Boolean @default(false)
 }
 
 model BonusSubmission {
@@ -116,4 +170,38 @@ model BonusEntry {
   budgetStudentName String?  // For paid students: the budget student whose line they go under
   budgetStudentGroup String?
   budgetStudentCard String?
+}
+
+enum PetitionType {
+  DISCOUNT
+  DORMITORY
+  SPECIALIZATION
+}
+
+enum PetitionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Petition {
+  id         Int             @id @default(autoincrement())
+  studentId  Int
+  student    Student         @relation(fields: [studentId], references: [id])
+  type       PetitionType
+  status     PetitionStatus  @default(PENDING)
+  createdAt  DateTime        @default(now())
+  approvedAt DateTime?
+
+  events PetitionEvent[]
+}
+
+model PetitionEvent {
+  id         Int      @id @default(autoincrement())
+  petitionId Int
+  petition   Petition @relation(fields: [petitionId], references: [id])
+
+  eventId   Int
+  eventName String
+  eventDate DateTime
 }

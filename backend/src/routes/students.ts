@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const router = Router();
 const prisma = new PrismaClient();
 
-const SECTOR_MAP: Record<string, string> = {
+export const SECTOR_MAP: Record<string, string> = {
   'Научка': 'Научное',
   'Инструментал': 'Инструментальное',
   'Танцевальный': 'Танцевальное',

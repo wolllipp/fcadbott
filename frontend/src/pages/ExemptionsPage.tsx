@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Coordinator } from '../App';
 import { api } from '../utils/api';
 import StudentPicker, { Student, ExternalStudent } from '../components/StudentPicker';
 import SuccessScreen from '../components/SuccessScreen';
 
-type Step = 'calendar' | 'pick' | 'confirm' | 'success' | 'pending-list' | 'pending-detail';
+type Step = 'calendar' | 'pick' | 'confirm' | 'success' | 'pending-list' | 'pending-detail' | 'edit';
+type ActiveTab = 'calendar' | 'pending';
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const MONTH_NAMES_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
-function getWeekDays() {
+function getWeekDays(offset: number) {
   const now = new Date();
+  now.setDate(now.getDate() + offset * 7);
   const day = now.getDay();
   const diffToMon = day === 0 ? -6 : 1 - day;
   const mon = new Date(now);
@@ -23,9 +25,24 @@ function getWeekDays() {
   });
 }
 
+function getWeekLabel(offset: number): string {
+  if (offset === 0) return 'Текущая неделя';
+  if (offset === -1) return 'Прошлая неделя';
+  if (offset === 1) return 'Следующая неделя';
+  const days = getWeekDays(offset);
+  const start = days[0];
+  const end = days[5];
+  return `${start.getDate()} ${MONTH_NAMES_SHORT[start.getMonth()]} — ${end.getDate()} ${MONTH_NAMES_SHORT[end.getMonth()]} ${end.getFullYear()}`;
+}
+
 function fmtDate(d: Date | string) {
   const dt = typeof d === 'string' ? new Date(d) : d;
   return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
+}
+
+function getSectorName(coordinator: any): string {
+  if (!coordinator || !coordinator.sector) return 'Без сектора';
+  return coordinator.sector;
 }
 
 interface Props { coordinator: Coordinator; }
@@ -33,10 +50,12 @@ interface Props { coordinator: Coordinator; }
 export default function ExemptionsPage({ coordinator }: Props) {
   const isChairman = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN';
   const isSecretary = coordinator.role === 'SECRETARY';
-  const canManageExemptions = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN' || coordinator.role === 'SECRETARY';
+  const canManageExemptions = isChairman || isSecretary;
+  const canToggleExhibited = isChairman || isSecretary;
 
   const [step, setStep] = useState<Step>('calendar');
-  const [weekDays] = useState(getWeekDays());
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekDays = useMemo(() => getWeekDays(weekOffset), [weekOffset]);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [exemptions, setExemptions] = useState<any[]>([]);
   const [pendingExemptions, setPendingExemptions] = useState<any[]>([]);
@@ -51,22 +70,25 @@ export default function ExemptionsPage({ coordinator }: Props) {
   const [selectedPending, setSelectedPending] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
-  const [activeTab, setActiveTab] = useState<'calendar' | 'pending'>('calendar');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('calendar');
+  const [editingExemption, setEditingExemption] = useState<any>(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [weekOffset]);
 
   async function loadData() {
-    api.exemptions.list('current').then(setExemptions).catch(console.error);
+    const days = getWeekDays(weekOffset);
+    const key = weekOffset === 0 ? 'current' : 'other';
+    api.exemptions.list(key, weekOffset).then(setExemptions).catch(console.error);
     if (isChairman) {
       api.exemptions.pending().then(setPendingExemptions).catch(console.error);
     }
     if (isSecretary) {
-      api.exemptions.all('current').then(setPendingExemptions).catch(console.error);
+      api.exemptions.all(key, weekOffset).then(setPendingExemptions).catch(console.error);
     }
   }
 
   useEffect(() => {
-    if (step === 'pick') {
+    if (step === 'pick' || step === 'edit') {
       setLoading(true);
       api.students.list({ sector: isChairman ? undefined : (coordinator.sector || undefined), role: coordinator.role })
         .then(setStudents).finally(() => setLoading(false));
@@ -94,7 +116,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
         exemptionDate: selectedDay.toISOString(),
         reason,
         studentIds: selectedIds,
-        externalStudents: externalStudents.filter((e) => e.fullName),
+        externalStudents,
       });
       setStep('success');
     } catch (e: any) { alert(e.message); }
@@ -125,6 +147,52 @@ export default function ExemptionsPage({ coordinator }: Props) {
     finally { setSubmitting(false); }
   }
 
+  async function toggleExhibited(id: number) {
+    try {
+      await api.exemptions.toggleExhibited(id, coordinator.role);
+      await loadData();
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function deleteExemption(id: number) {
+    if (!confirm('Отменить освобождение?')) return;
+    try {
+      await api.exemptions.remove(id);
+      await loadData();
+      setDetailDay(null);
+    } catch (e: any) { alert(e.message); }
+  }
+
+  function startEdit(ex: any) {
+    setEditingExemption({
+      id: ex.id,
+      reason: ex.reason,
+      studentIds: ex.students.filter((s: any) => s.studentId !== null).map((s: any) => s.studentId!),
+      externalStudents: ex.students.filter((s: any) => s.externalName !== null).map((s: any) => ({
+        fullName: s.externalName,
+        groupNumber: s.externalGroup,
+      })),
+    });
+    setStep('edit');
+  }
+
+  async function saveEdit() {
+    if (!editingExemption || !editingExemption.reason.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.exemptions.update(editingExemption.id, {
+        reason: editingExemption.reason,
+        studentIds: editingExemption.studentIds,
+        externalStudents: editingExemption.externalStudents,
+        role: coordinator.role,
+      });
+      setEditingExemption(null);
+      setStep('calendar');
+      await loadData();
+    } catch (e: any) { alert(e.message); }
+    finally { setSubmitting(false); }
+  }
+
   function reset() {
     setStep('calendar');
     setSelectedDay(null);
@@ -145,6 +213,10 @@ export default function ExemptionsPage({ coordinator }: Props) {
     return exemptions.filter((e) => new Date(e.exemptionDate).toDateString() === d.toDateString());
   }
 
+  function navigateWeek(direction: number) {
+    setWeekOffset((prev) => prev + direction);
+  }
+
   if (step === 'success') {
     const isOwn = isChairman;
     return (
@@ -158,7 +230,6 @@ export default function ExemptionsPage({ coordinator }: Props) {
     );
   }
 
-  // Detail view for pending exemption (chairman)
   if (step === 'pending-detail' && selectedPending) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -217,9 +288,98 @@ export default function ExemptionsPage({ coordinator }: Props) {
     );
   }
 
-  // Day detail view
+  if (step === 'edit' && editingExemption) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
+          <button onClick={() => { setStep('calendar'); setEditingExemption(null); }}
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)', marginBottom: 12 }}>
+            ← Назад
+          </button>
+          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Редактировать освобождение</h1>
+          <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>При сохранении появится пометка «Изменено»</div>
+        </div>
+        <div className="page-scroll" style={{ padding: '0 16px' }}>
+          <div className="section-label">Причина</div>
+          <textarea className="input" value={editingExemption.reason} onChange={(e) => setEditingExemption({ ...editingExemption, reason: e.target.value })} rows={3} style={{ resize: 'none', marginBottom: 14 }} />
+
+          <div className="section-label">Студенты из списка ({editingExemption.studentIds.length})</div>
+          {students.length === 0 ? (
+            <div style={{ padding: '10px 0', color: 'var(--text-muted)', fontSize: 13 }}>Загрузка студентов...</div>
+          ) : (
+            students.map((s) => {
+              const selected = editingExemption.studentIds.includes(s.id);
+              return (
+                <div key={s.id} className={`chip ${selected ? 'selected' : ''}`} onClick={() => {
+                  const ids = selected
+                    ? editingExemption.studentIds.filter((id: number) => id !== s.id)
+                    : [...editingExemption.studentIds, s.id];
+                  setEditingExemption({ ...editingExemption, studentIds: ids });
+                }}>
+                  <div className="chip-check">
+                    {selected && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 500, fontSize: 14 }}>{s.fullName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          <div style={{ marginTop: 14 }}>
+            <div className="section-label">Внешние студенты ({editingExemption.externalStudents.length})</div>
+            {editingExemption.externalStudents.map((ext: any, i: number) => (
+              <div key={i} className="card" style={{ marginBottom: 8, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>#{i + 1}</span>
+                  <button onClick={() => {
+                    const exts = editingExemption.externalStudents.filter((_: any, idx: number) => idx !== i);
+                    setEditingExemption({ ...editingExemption, externalStudents: exts });
+                  }} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 18 }}>×</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input className="input" placeholder="ФИО" value={ext.fullName}
+                    onChange={(e) => {
+                      const exts = [...editingExemption.externalStudents];
+                      exts[i] = { ...exts[i], fullName: e.target.value };
+                      setEditingExemption({ ...editingExemption, externalStudents: exts });
+                    }} />
+                  <input className="input" placeholder="Группа" value={ext.groupNumber}
+                    onChange={(e) => {
+                      const exts = [...editingExemption.externalStudents];
+                      exts[i] = { ...exts[i], groupNumber: e.target.value };
+                      setEditingExemption({ ...editingExemption, externalStudents: exts });
+                    }} />
+                </div>
+              </div>
+            ))}
+            <button className="btn btn-ghost" onClick={() => {
+              setEditingExemption({ ...editingExemption, externalStudents: [...editingExemption.externalStudents, { fullName: '', groupNumber: '' }] });
+            }} style={{ fontSize: 14 }}>+ Добавить внешнего</button>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <button className="btn btn-primary" disabled={submitting || !editingExemption.reason.trim()} onClick={saveEdit}>
+              {submitting ? '...' : '✓ Сохранить изменения'}
+            </button>
+          </div>
+          <div style={{ height: 20 }} />
+        </div>
+      </div>
+    );
+  }
+
   if (detailDay) {
     const dayExemptions = getExemptionsForDay(detailDay);
+    const groupedBySector: Record<string, any[]> = {};
+    dayExemptions.forEach((ex) => {
+      const sector = getSectorName(ex.coordinator);
+      if (!groupedBySector[sector]) groupedBySector[sector] = [];
+      groupedBySector[sector].push(ex);
+    });
+
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
@@ -231,25 +391,61 @@ export default function ExemptionsPage({ coordinator }: Props) {
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           {dayExemptions.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', fontSize: 14 }}>Освобождений нет</div>
-          ) : dayExemptions.map((ex) => {
-            const statusLabel = ex.status === 'APPROVED' ? 'Подтверждено' : ex.status === 'REJECTED' ? 'Отклонено' : 'На рассмотрении';
-            const statusClass = ex.status === 'APPROVED' ? 'badge-green' : ex.status === 'REJECTED' ? 'badge-gray' : 'badge-yellow';
-            return (
-              <div key={ex.id} className="card" style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{ex.coordinator.fullName}</div>
-                  <span className={`badge ${statusClass}`}>{statusLabel}</span>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{ex.reason}</div>
-                {ex.students.map((es: any, i: number) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: i === 0 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
-                    <span>{es.student?.fullName || es.externalName}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>гр. {es.student?.groupNumber || es.externalGroup}</span>
-                  </div>
-                ))}
+          ) : (
+            Object.entries(groupedBySector).map(([sector, exs], si) => (
+              <div key={sector} style={{ marginBottom: si < Object.keys(groupedBySector).length - 1 ? 20 : 0 }}>
+                <div className="section-label" style={{ marginBottom: 8 }}>{sector}</div>
+                {exs.map((ex) => {
+                  const statusLabel = ex.status === 'APPROVED' ? 'Подтверждено' : ex.status === 'REJECTED' ? 'Отклонено' : 'На рассмотрении';
+                  const statusClass = ex.status === 'APPROVED' ? 'badge-green' : ex.status === 'REJECTED' ? 'badge-gray' : 'badge-yellow';
+                  return (
+                    <div key={ex.id} className="card" style={{ marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{ex.coordinator.fullName}</div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                          {ex.editedAt && <span className="badge" style={{ background: 'var(--warning-dim)', color: 'var(--warning)' }}>Изменено</span>}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{ex.reason}</div>
+                      {ex.students.map((es: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: i === 0 ? '1px solid var(--border)' : 'none', fontSize: 13 }}>
+                          <span>{es.student?.fullName || es.externalName}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>гр. {es.student?.groupNumber || es.externalGroup}</span>
+                        </div>
+                      ))}
+                      <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {canToggleExhibited && (
+                          <button onClick={() => toggleExhibited(ex.id)}
+                            style={{
+                              background: ex.isExhibited ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                              border: `1px solid ${ex.isExhibited ? 'var(--accent)' : 'var(--border)'}`,
+                              borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                              color: ex.isExhibited ? 'var(--accent)' : 'var(--text-secondary)',
+                              fontSize: 12, fontWeight: 600,
+                            }}>
+                            {ex.isExhibited ? '✓ Выставлено' : '○ Выставить'}
+                          </button>
+                        )}
+                        {(canManageExemptions || !ex.isExhibited) && (
+                          <button onClick={() => startEdit(ex)}
+                            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>
+                            ✎ Редактировать
+                          </button>
+                        )}
+                        {(canManageExemptions || !ex.isExhibited) && (
+                          <button onClick={() => deleteExemption(ex.id)}
+                            style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 12 }}>
+                            Отменить
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ))
+          )}
         </div>
       </div>
     );
@@ -259,14 +455,13 @@ export default function ExemptionsPage({ coordinator }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
         {step !== 'calendar' && step !== 'pending-list' && (
-          <button onClick={() => { if (step === 'pick') setStep('calendar'); else if (step === 'amounts' as any) setStep('pick'); else setStep('pick'); }}
+          <button onClick={() => { if (step === 'pick') setStep('calendar'); else if (step === 'edit') setStep('calendar'); else setStep('pick'); }}
             style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)', marginBottom: 12 }}>
             ← Назад
           </button>
         )}
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Освобождения</h1>
 
-        {/* Tabs for chairman/secretary */}
         {(isChairman || isSecretary) && (step === 'calendar' || step === 'pending-list') && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             {(['calendar', 'pending-list'] as const).map((tab) => (
@@ -277,7 +472,6 @@ export default function ExemptionsPage({ coordinator }: Props) {
                   background: step === tab ? 'var(--accent-dim)' : 'var(--bg-raised)',
                   color: step === tab ? 'var(--accent)' : 'var(--text-secondary)',
                   fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  position: 'relative',
                 }}>
                 {tab === 'calendar' ? 'Календарь' : (
                   <span>
@@ -295,29 +489,66 @@ export default function ExemptionsPage({ coordinator }: Props) {
         )}
       </div>
 
-      {/* PENDING LIST (chairman) / ALL LIST (secretary) */}
       {step === 'pending-list' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           {pendingExemptions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 14 }}>
+            <div className="animate-in" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 14 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
               {isSecretary ? 'Нет освобождений' : 'Нет докладных на рассмотрении'}
             </div>
-          ) : pendingExemptions.map((ex) => {
+          ) : pendingExemptions.map((ex, idx) => {
             const statusLabel = isSecretary
               ? (ex.status === 'APPROVED' ? 'Подтверждено' : ex.status === 'REJECTED' ? 'Отклонено' : 'На рассмотрении')
               : 'Ожидает';
             const statusClass = isSecretary
               ? (ex.status === 'APPROVED' ? 'badge-green' : ex.status === 'REJECTED' ? 'badge-gray' : 'badge-yellow')
               : 'badge-accent';
-            return (
-              <div key={ex.id} className="card" style={{ marginBottom: 10, cursor: (isChairman && ex.status === 'PENDING') ? 'pointer' : 'default' }}
+            return isSecretary ? (
+              <div key={ex.id} className="card hover-lift" style={{ marginBottom: 10, animation: `fadeIn 0.25s ease ${idx * 0.05}s both` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{ex.coordinator.fullName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>
+                      ◎ {fmtDate(ex.exemptionDate)} · {ex.students.length} студ.
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ex.reason}</div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      {ex.editedAt && <span className="badge" style={{ background: 'var(--warning-dim)', color: 'var(--warning)' }}>Изменено</span>}
+                      <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {canToggleExhibited && (
+                    <button onClick={() => toggleExhibited(ex.id)}
+                      style={{
+                        background: ex.isExhibited ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                        border: `1px solid ${ex.isExhibited ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                        color: ex.isExhibited ? 'var(--accent)' : 'var(--text-secondary)',
+                        fontSize: 12, fontWeight: 600,
+                      }}>
+                      {ex.isExhibited ? '✓ Выставлено' : '○ Выставить'}
+                    </button>
+                  )}
+                  <button onClick={() => startEdit(ex)}
+                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>
+                    ✎ Редактировать
+                  </button>
+                  <button onClick={() => deleteExemption(ex.id)}
+                    style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 12 }}>
+                    Отменить
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div key={ex.id} className="card hover-lift" style={{ marginBottom: 10, cursor: (isChairman && ex.status === 'PENDING') ? 'pointer' : 'default', animation: `fadeIn 0.25s ease ${idx * 0.05}s both` }}
                 onClick={() => { if (isChairman && ex.status === 'PENDING') { setSelectedPending(ex); setStep('pending-detail'); } }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{ex.coordinator.fullName}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>
-                      📅 {fmtDate(ex.exemptionDate)} · {ex.students.length} студ.
+                      ◎ {fmtDate(ex.exemptionDate)} · {ex.students.length} студ.
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ex.reason}</div>
                   </div>
@@ -333,17 +564,21 @@ export default function ExemptionsPage({ coordinator }: Props) {
         </div>
       )}
 
-      {/* CALENDAR */}
       {step === 'calendar' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
-          <div className="section-label">Текущая неделя</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, animation: 'fadeIn 0.25s ease both' }}>
+            <button onClick={() => navigateWeek(-1)} style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 10px', color: 'var(--text)', cursor: 'pointer', fontSize: 16 }}>‹</button>
+            <div className="section-label" style={{ margin: 0 }}>{getWeekLabel(weekOffset)}</div>
+            <button onClick={() => navigateWeek(1)} style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 10px', color: 'var(--text)', cursor: 'pointer', fontSize: 16 }}>›</button>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginBottom: 20 }}>
             {weekDays.map((d, i) => {
               const isToday = d.toDateString() === today.toDateString();
               const hasDot = dayHasExemption(d);
               return (
                 <button key={i} onClick={() => { if (hasDot) setDetailDay(d); }}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 4px', borderRadius: 12, background: isToday ? 'var(--accent-dim)' : 'var(--bg-card)', border: `1.5px solid ${isToday ? 'var(--accent)' : 'var(--border)'}`, cursor: hasDot ? 'pointer' : 'default', fontFamily: 'var(--font)' }}>
+                  className="day-cell"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '10px 4px', borderRadius: 12, background: isToday ? 'var(--accent-dim)' : 'var(--bg-card)', border: `1.5px solid ${isToday ? 'var(--accent)' : 'var(--border)'}`, cursor: hasDot ? 'pointer' : 'default', fontFamily: 'var(--font)', animation: `fadeIn 0.25s ease ${i * 0.06}s both` }}>
                   <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>{DAY_NAMES[i]}</span>
                   <span style={{ fontSize: 15, fontWeight: isToday ? 700 : 500, color: isToday ? 'var(--accent)' : 'var(--text)' }}>{d.getDate()}</span>
                   <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{MONTH_NAMES_SHORT[d.getMonth()]}</span>
@@ -353,12 +588,12 @@ export default function ExemptionsPage({ coordinator }: Props) {
             })}
           </div>
 
-          <div className="section-label">Новое освобождение</div>
+          <div className="section-label" style={{ animation: 'fadeIn 0.25s ease 0.15s both' }}>Новое освобождение</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             {weekDays.map((d, i) => {
               const selected = selectedDay?.toDateString() === d.toDateString();
               return (
-                <button key={i} onClick={() => setSelectedDay(d)} className={`chip ${selected ? 'selected' : ''}`} style={{ justifyContent: 'space-between' }}>
+                <button key={i} onClick={() => setSelectedDay(d)} className={`chip chip-btn ${selected ? 'selected' : ''}`} style={{ justifyContent: 'space-between', animation: `fadeIn 0.25s ease ${0.2 + i * 0.04}s both` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div className="chip-check">
                       {selected && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
@@ -370,20 +605,19 @@ export default function ExemptionsPage({ coordinator }: Props) {
               );
             })}
           </div>
-          <button className="btn btn-primary" disabled={!selectedDay} onClick={() => setStep('pick')}>Выбрать студентов →</button>
+          <button className="btn btn-primary" disabled={!selectedDay} onClick={() => setStep('pick')} style={{ animation: 'fadeIn 0.25s ease 0.5s both' }}>Выбрать студентов →</button>
           <div style={{ height: 20 }} />
         </div>
       )}
 
-      {/* PICK */}
       {step === 'pick' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           <div style={{ padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-            📅 {selectedDay && fmtDate(selectedDay)}
+            ◎ {selectedDay && fmtDate(selectedDay)}
           </div>
           {alreadyExemptedIds.length > 0 && (
             <div style={{ padding: '10px 12px', background: 'var(--warning-dim)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: 'var(--warning)' }}>
-              ⚠️ Студенты помечённые <strong>«уже освобождён»</strong> уже имеют освобождение на этот день
+              Студенты помечённые <strong>«уже освобождён»</strong> уже имеют освобождение на этот день
             </div>
           )}
           {loading ? (
@@ -401,7 +635,6 @@ export default function ExemptionsPage({ coordinator }: Props) {
         </div>
       )}
 
-      {/* CONFIRM */}
       {step === 'confirm' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           <div className="card" style={{ marginBottom: 14 }}>

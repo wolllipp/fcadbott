@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Coordinator, Tab } from '../App';
+import { api } from '../utils/api';
 
 const ROLE_LABEL: Record<string, string> = {
   CHAIRMAN: 'Председатель студенческого совета',
@@ -7,21 +8,6 @@ const ROLE_LABEL: Record<string, string> = {
   SECRETARY: 'Секретарь студенческого совета',
   DEAN: 'Мама ФКП',
   COORDINATOR: 'Координатор',
-};
-
-// Proper adjective form for sector name in "X направление"
-const SECTOR_ADJECTIVE: Record<string, string> = {
-  'Научное': 'Научного',
-  'Инструментальное': 'Инструментального',
-  'Танцевальное': 'Танцевального',
-  'Театральное': 'Театрального',
-  'Учебное': 'Учебного',
-  'Вокальное': 'Вокального',
-  'Культурно-массовое': 'Культурно-массового',
-  'Декоративное': 'Декоративного',
-  'Спортивное': 'Спортивного',
-  'Профориентационное': 'Профориентационного',
-  'Информационное': 'Информационного',
 };
 
 function sectorLabel(sector: string | null): string {
@@ -44,18 +30,41 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
   const day = now.getDate();
   const bonusOpen = day >= 20;
 
+  const [stats, setStats] = useState({ students: 0, coordinators: 0, events: 0, pendingPetitions: 0 });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [students, coordinators, events, petitions] = await Promise.all([
+          api.council.students.list().catch(() => []),
+          api.council.coordinators.list().catch(() => []),
+          api.events.list().catch(() => []),
+          api.petitions.list({ role: coordinator.role }).catch(() => []),
+        ]);
+        setStats({
+          students: students.length,
+          coordinators: coordinators.length,
+          events: events.length,
+          pendingPetitions: petitions.filter((p: any) => p.status === 'PENDING').length,
+        });
+      } catch (_) {}
+      setLoadingStats(false);
+    }
+    loadStats();
+  }, []);
+
   return (
     <div className="page-scroll">
       <div style={{ padding: '24px 16px 0' }}>
-        {/* Header */}
         <div style={{ marginBottom: 28 }} className="animate-in">
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
             <div style={{
               width: 52, height: 52, borderRadius: 16,
               background: 'var(--accent-dim)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 26, border: '1px solid rgba(123,110,246,0.3)',
-            }}>🎓</div>
+                fontSize: 26, border: '1px solid rgba(123,110,246,0.3)',
+              }}>◈</div>
             <div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 СС ФКП БГУИР
@@ -64,7 +73,6 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Profile card */}
           <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: 'var(--accent-dim)', filter: 'blur(30px)' }} />
             <div style={{ position: 'relative' }}>
@@ -87,35 +95,50 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
           </div>
         </div>
 
-        {/* Quick actions */}
         <div style={{ marginBottom: 24 }} className="animate-in">
+          <div className="section-label">Статистика</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { label: 'Студентов', value: stats.students },
+              { label: 'Секторов', value: stats.coordinators },
+              { label: 'Мероприятий', value: stats.events },
+              { label: 'Ходатайств', value: stats.pendingPetitions, accent: stats.pendingPetitions > 0 },
+            ].map((item) => (
+              <div key={item.label} className="card" style={{ textAlign: 'center', padding: '14px 8px' }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color: item.accent ? 'var(--error)' : 'var(--accent)', marginBottom: 4 }}>
+                  {loadingStats ? '...' : item.value}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
           <div className="section-label">Быстрые действия</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button
               onClick={() => onNavigate('exemptions')}
-              className="card"
-              style={{ cursor: 'pointer', border: '1px solid var(--border)', textAlign: 'left', transition: 'all 0.18s' }}
-              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
-              onMouseUp={(e) => (e.currentTarget.style.transform = '')}
+              className="card action-card"
+              style={{ animation: 'fadeIn 0.3s ease 0.1s both', border: '1px solid var(--border)', textAlign: 'left' }}
             >
-              <div style={{ fontSize: 28, marginBottom: 10 }}>📋</div>
+              <div className="icon" style={{ fontSize: 28, marginBottom: 10, display: 'inline-block' }}>◎</div>
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Освобождения</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Выставить на текущей неделе</div>
             </button>
 
             <button
               onClick={() => onNavigate('bonuses')}
-              className="card"
+              className={`card action-card${bonusOpen ? ' animate-glow-pulse' : ''}`}
               style={{
+                animation: 'fadeIn 0.3s ease 0.2s both',
                 cursor: 'pointer',
-                border: `1px solid ${bonusOpen ? 'rgba(123,110,246,0.3)' : 'var(--border)'}`,
-                textAlign: 'left', transition: 'all 0.18s',
+                border: `1px solid ${bonusOpen ? 'var(--accent)' : 'var(--border)'}`,
+                textAlign: 'left',
                 background: bonusOpen ? 'rgba(123,110,246,0.06)' : 'var(--bg-card)',
               }}
-              onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.97)')}
-              onMouseUp={(e) => (e.currentTarget.style.transform = '')}
             >
-              <div style={{ fontSize: 28, marginBottom: 10 }}>★</div>
+              <div className="icon" style={{ fontSize: 28, marginBottom: 10, display: 'inline-block' }}>◇</div>
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>Премирование</div>
               <div style={{ fontSize: 12, color: bonusOpen ? 'var(--accent)' : 'var(--text-muted)' }}>
                 {bonusOpen ? '✓ Подача открыта' : `Откроется с 20-го`}
@@ -124,7 +147,6 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
           </div>
         </div>
 
-        {/* Status */}
         <div className="animate-in">
           <div className="section-label">Статус</div>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
