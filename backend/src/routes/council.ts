@@ -9,6 +9,10 @@ function canManageCouncil(role: string): boolean {
   return role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN' || role === 'SECRETARY';
 }
 
+function canManageStudents(role: string): boolean {
+  return role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN' || role === 'SECRETARY' || role === 'COORDINATOR';
+}
+
 // STUDENTS
 router.get('/students', async (req: Request, res: Response) => {
   try {
@@ -24,7 +28,7 @@ router.post('/students', async (req: Request, res: Response) => {
   try {
     const { creatorId, fullName, groupNumber, studentCardNumber, budgetStatus, sectors } = req.body;
     const creator = await prisma.coordinator.findUnique({ where: { id: creatorId } });
-    if (!creator || !canManageCouncil(creator.role)) return res.status(403).json({ error: 'Access denied' });
+    if (!creator || !canManageStudents(creator.role)) return res.status(403).json({ error: 'Access denied' });
 
     const student = await prisma.student.create({
       data: { fullName, groupNumber, studentCardNumber, budgetStatus: budgetStatus || 'BUDGET', sectors: sectors || [] },

@@ -25,7 +25,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     let students;
 
-    if (role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN') {
+    if (role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN' || role === 'SECRETARY') {
       // See all students
       students = await prisma.student.findMany({
         orderBy: { fullName: 'asc' },
