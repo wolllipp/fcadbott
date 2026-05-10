@@ -27,6 +27,12 @@ const SECTOR_LABELS: Record<string, string> = {
   'Спортивное': 'Спортивное', 'Профориентационное': 'Профориентационное', 'Информационное': 'Информационное',
 };
 
+const STATUS_OPTIONS = [
+  { value: 'BUDGET', label: 'Бюджет' },
+  { value: 'PAID', label: 'Платка' },
+  { value: 'NO_STIPEND', label: 'Без стипендии' },
+];
+
 export default function SectorPage({ coordinator }: Props) {
   const isAdmin = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN' || coordinator.role === 'SECRETARY';
   const [loading, setLoading] = useState(true);
@@ -34,9 +40,9 @@ export default function SectorPage({ coordinator }: Props) {
   const [sectorOverview, setSectorOverview] = useState<SectorOverview>({});
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
   const [showAddToMySector, setShowAddToMySector] = useState(false);
-  const [newStudentForm, setNewStudentForm] = useState({ fullName: '', groupNumber: '', studentCardNumber: '' });
+  const [newStudentForm, setNewStudentForm] = useState({ fullName: '', groupNumber: '', studentCardNumber: '', budgetStatus: 'BUDGET' });
   const [showAddGlobal, setShowAddGlobal] = useState(false);
-  const [globalForm, setGlobalForm] = useState({ fullName: '', groupNumber: '', studentCardNumber: '', sector: '' });
+  const [globalForm, setGlobalForm] = useState({ fullName: '', groupNumber: '', studentCardNumber: '', sector: '', budgetStatus: 'BUDGET' });
   const [submitting, setSubmitting] = useState(false);
   const sectorNames = Object.keys(SECTOR_LABELS);
 
@@ -60,8 +66,8 @@ export default function SectorPage({ coordinator }: Props) {
     if (!newStudentForm.fullName || !newStudentForm.groupNumber || !newStudentForm.studentCardNumber) return;
     setSubmitting(true);
     try {
-      await api.council.students.create({ creatorId: coordinator.id, ...newStudentForm, sectors: [coordinator.sector!] });
-      setNewStudentForm({ fullName: '', groupNumber: '', studentCardNumber: '' });
+      await api.council.students.create({ creatorId: coordinator.id, fullName: newStudentForm.fullName, groupNumber: newStudentForm.groupNumber, studentCardNumber: newStudentForm.studentCardNumber, budgetStatus: newStudentForm.budgetStatus, sectors: [coordinator.sector!] });
+      setNewStudentForm({ fullName: '', groupNumber: '', studentCardNumber: '', budgetStatus: 'BUDGET' });
       setShowAddToMySector(false);
       await loadData();
     } catch (e: any) { alert(e.message); }
@@ -94,8 +100,8 @@ export default function SectorPage({ coordinator }: Props) {
     if (!globalForm.fullName || !globalForm.groupNumber || !globalForm.studentCardNumber || !globalForm.sector) return;
     setSubmitting(true);
     try {
-      await api.council.students.create({ creatorId: coordinator.id, ...globalForm, sectors: [globalForm.sector] });
-      setGlobalForm({ fullName: '', groupNumber: '', studentCardNumber: '', sector: '' });
+      await api.council.students.create({ creatorId: coordinator.id, fullName: globalForm.fullName, groupNumber: globalForm.groupNumber, studentCardNumber: globalForm.studentCardNumber, budgetStatus: globalForm.budgetStatus, sectors: [globalForm.sector] });
+      setGlobalForm({ fullName: '', groupNumber: '', studentCardNumber: '', sector: '', budgetStatus: 'BUDGET' });
       setShowAddGlobal(false);
       await loadData();
     } catch (e: any) { alert(e.message); }
@@ -132,6 +138,9 @@ export default function SectorPage({ coordinator }: Props) {
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{s.fullName}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {s.budgetStatus === 'PAID' ? '🟡 Платка' : s.budgetStatus === 'NO_STIPEND' ? '⚪ Без стипендии' : '🟢 Бюджет'}
+                      </div>
                     </div>
                     <button onClick={() => removeStudentFromMySector(s.id)}
                       style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 18, padding: 4 }}>×</button>
@@ -146,7 +155,7 @@ export default function SectorPage({ coordinator }: Props) {
         </div>
         {coordinator.sector && (
           <div style={{ padding: '12px 16px', flexShrink: 0, borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
-            <button className="btn btn-primary" onClick={() => { setNewStudentForm({ fullName: '', groupNumber: '', studentCardNumber: '' }); setShowAddToMySector(true); }} style={{ width: '100%' }}>
+            <button className="btn btn-primary" onClick={() => { setNewStudentForm({ fullName: '', groupNumber: '', studentCardNumber: '', budgetStatus: 'BUDGET' }); setShowAddToMySector(true); }} style={{ width: '100%' }}>
               + Добавить студента
             </button>
           </div>
@@ -164,6 +173,12 @@ export default function SectorPage({ coordinator }: Props) {
                   onChange={(e) => setNewStudentForm({ ...newStudentForm, groupNumber: e.target.value })} />
                 <input className="input" placeholder="Номер студенческого *" value={newStudentForm.studentCardNumber}
                   onChange={(e) => setNewStudentForm({ ...newStudentForm, studentCardNumber: e.target.value })} />
+                <select className="input" value={newStudentForm.budgetStatus}
+                  onChange={(e) => setNewStudentForm({ ...newStudentForm, budgetStatus: e.target.value })}>
+                  {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
               </div>
               <button className="btn btn-primary" disabled={submitting} onClick={addStudentToMySector} style={{ width: '100%' }}>Добавить</button>
               <button className="btn btn-ghost" onClick={() => setShowAddToMySector(false)} style={{ width: '100%', marginTop: 8 }}>Отмена</button>
@@ -210,6 +225,9 @@ export default function SectorPage({ coordinator }: Props) {
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500 }}>{s.fullName}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                            {s.budgetStatus === 'PAID' ? '🟡 Платка' : s.budgetStatus === 'NO_STIPEND' ? '⚪ Без стипендии' : '🟢 Бюджет'}
+                          </div>
                         </div>
                         <button onClick={() => removeStudentFromSector(s.id, secName)}
                           style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', fontSize: 16, padding: 4 }}>×</button>
@@ -242,6 +260,12 @@ export default function SectorPage({ coordinator }: Props) {
               <select className="input" value={globalForm.sector} onChange={(e) => setGlobalForm({ ...globalForm, sector: e.target.value })}>
                 <option value="">Выберите сектор *</option>
                 {sectorNames.map((s) => (<option key={s} value={s}>{s}</option>))}
+              </select>
+              <select className="input" value={globalForm.budgetStatus}
+                onChange={(e) => setGlobalForm({ ...globalForm, budgetStatus: e.target.value })}>
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </div>
             <button className="btn btn-primary" disabled={submitting} onClick={addStudentGlobal} style={{ width: '100%' }}>Добавить</button>
