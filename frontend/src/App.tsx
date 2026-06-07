@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './utils/api';
+import PortfolioPage from './pages/PortfolioPage';
 import HomePage from './pages/HomePage';
 import ExemptionsPage from './pages/ExemptionsPage';
 import BonusesPage from './pages/BonusesPage';
@@ -29,6 +30,10 @@ export interface Coordinator {
   sector: string | null;
 }
 
+function isInTelegram(): boolean {
+  return !!(window.Telegram?.WebApp?.initData);
+}
+
 export default function App() {
   const [coordinator, setCoordinator] = useState<Coordinator | null>(null);
   const [student, setStudent] = useState<any>(null);
@@ -40,6 +45,11 @@ export default function App() {
   const isAdmin = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY' || coordinator?.role === 'DEAN' || coordinator?.role === 'SECRETARY';
 
   useEffect(() => {
+    if (!isInTelegram()) {
+      setLoading(false);
+      return;
+    }
+
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.ready();
@@ -111,6 +121,10 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
 
+  // Not in Telegram — show portfolio
+  if (!isInTelegram()) return <PortfolioPage />;
+
+  // Student mode
   if (!coordinator && student) {
     return (
       <StudentDashboard student={student} onLogout={handleStudentLogout} />
