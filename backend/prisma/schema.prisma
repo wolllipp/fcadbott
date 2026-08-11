@@ -96,6 +96,7 @@ model Exemption {
   coordinator    Coordinator     @relation(fields: [createdBy], references: [id])
   status         ExemptionStatus @default(PENDING)
   isExhibited    Boolean         @default(false)
+  isPrinted    Boolean         @default(false)
   editedAt       DateTime?
   createdAt      DateTime        @default(now())
 

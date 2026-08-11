@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
+import { sendNewEvent } from "../services/bot";
 const router = Router();
-const prisma = new PrismaClient();
+
 
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -28,9 +29,8 @@ router.post('/', async (req: Request, res: Response) => {
       include: { participants: true, creator: { select: { id: true, fullName: true } } },
     });
 
-    // Notify students about new event
     try {
-      const { sendNewEvent } = require('../services/bot');
+      // const { sendNewEvent } = require('../services/bot');
       await sendNewEvent(event);
     } catch (_) {}
 

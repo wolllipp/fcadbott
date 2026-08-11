@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { sendExemptionReport, sendExemptionPending } from '../services/bot';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 function getWeekBounds(dateStr?: string) {
   let now: Date;
@@ -311,6 +311,40 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
     await sendExemptionRejected(exemption, rejectReason);
 
     res.json(exemption);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/:id/toggle-printed', async (req: Request, res: Response) => {
+  try {
+    const { role } = req.body;
+    if (role !== 'CHAIRMAN' && role !== 'DEPUTY' && role !== 'DEAN' && role !== 'SECRETARY') {
+      return res.status(403).json({ error: 'Only chairman, deputy, dean, or secretary can toggle printed' });
+    }
+    const existing = await prisma.exemption.findUnique({ where: { id: Number(req.params.id) } });
+    if (!existing) return res.status(404).json({ error: 'Exemption not found' });
+    const exemption = await prisma.exemption.update({
+      where: { id: Number(req.params.id) },
+      data: { isPrinted: !existing.isPrinted },
+      include: { coordinator: true, students: { include: { student: true } } },
+    });
+    res.json(exemption);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/non-exhibited', async (req: Request, res: Response) => {
+  try {
+    const exemptions = await prisma.exemption.findMany({
+      where: { OR: [{ isExhibited: false }, { isPrinted: false }] },
+      include: { coordinator: true, students: { include: { student: true } } },
+      orderBy: { exemptionDate: 'desc' },
+    });
+    res.json(exemptions);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

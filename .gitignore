@@ -3,3 +3,10 @@
 *.log
 node_modules/
 backend/backend.log
+backend/.env
+.env
+dist/
+backend/dist/
+frontend/dist/
+*.tar.gz
+

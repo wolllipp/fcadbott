@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { sendBonusNotification, sendBonusReport, sendBonusDoc } from '../services/bot';
 import { generateBonusDoc } from '../services/bonusDocGenerator';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 function isChairmanOrDean(role: string) {
   return role === 'CHAIRMAN' || role === 'DEAN' || role === 'SECRETARY';

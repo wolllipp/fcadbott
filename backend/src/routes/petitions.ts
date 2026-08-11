@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { generatePetitionDoc } from '../services/petitionDocGenerator';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 router.post('/', async (req: Request, res: Response) => {
   try {

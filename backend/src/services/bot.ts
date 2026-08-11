@@ -1,9 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { generateExemptionDoc } from './docGenerator';
 
 let bot: TelegramBot | null = null;
-const prisma = new PrismaClient();
+
 
 export async function initBot() {
   const token = process.env.BOT_TOKEN;
@@ -29,9 +29,20 @@ export async function initBot() {
         `👋 Добро пожаловать, *${coordinator.fullName}*!\n\nОткройте Mini App через кнопку меню.`,
         { parse_mode: 'Markdown' }
       );
-    } else {
-      bot!.sendMessage(msg.chat.id, '❌ Доступ запрещён.');
+      return;
     }
+
+    const student = await prisma.student.findFirst({ where: { telegramUsername: username } });
+    if (student) {
+      await prisma.student.update({ where: { id: student.id }, data: { chatId: String(msg.chat.id) } });
+      bot!.sendMessage(msg.chat.id,
+        `👋 Добро пожаловать, *${student.fullName}*!\n\nОткройте Mini App через кнопку меню, чтобы просматривать мероприятия, освобождения и ходатайства.`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    bot!.sendMessage(msg.chat.id, '❌ Доступ запрещён.');
   });
 }
 
@@ -162,6 +173,7 @@ export async function sendPetitionPending(petition: any) {
       where: { role: { in: ['CHAIRMAN', 'DEAN'] }, chatId: { not: null } },
     });
     const sent = new Set<string>();
+    
     for (const t of targets) {
       if (t.chatId && !sent.has(t.chatId)) {
         sent.add(t.chatId);
@@ -172,19 +184,21 @@ export async function sendPetitionPending(petition: any) {
 }
 
 export async function sendNewEvent(event: any) {
+
   if (!bot) return;
   const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const message =
-    `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.description ? `📝 ${event.description}\n` : ''}\n✍️ Записаться можно через приложение студсовета: @fcadbot_bot`;
+    `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.description ? `📝 ${event.description}\n` : ''}\n✍️ Записаться можно через приложение студсовета: @fcadbot\\_bot`;
   
   // Notify all students who have chatId
   try {
     const students = await prisma.student.findMany({ where: { chatId: { not: null } } });
     const sent = new Set<string>();
+
     for (const s of students) {
       if (s.chatId && !sent.has(s.chatId)) {
         sent.add(s.chatId);
-        try { await bot.sendMessage(s.chatId, message, { parse_mode: 'Markdown' }); } catch (_) {}
+        try { await bot.sendMessage(s.chatId, message, { parse_mode: 'Markdown' }); console.log('[sendNewEvent] Sent to', s.chatId); } catch (e) { console.log('[sendNewEvent] FAILED for', s.chatId, e.message); }
       }
     }
   } catch (e) { console.error(e); }
@@ -203,7 +217,7 @@ export async function sendExemptionToStudent(exemption: any, student: any) {
   if (!bot) return;
   if (!student.chatId) return;
   const dateStr = new Date(exemption.exemptionDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const message = '✅ *Вам выставлено освобождение*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nОткройте приложение студсовета для просмотра: @fcadbot_bot';
+  const message = '✅ *Вам выставлено освобождение*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nОткройте приложение студсовета для просмотра: @fcadbot\\_bot';
   try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
@@ -216,7 +230,7 @@ export async function sendPetitionApproved(petition: any) {
     SPECIALIZATION: 'на профилизацию',
   };
   const typeName = typeLabel[petition.type] || petition.type;
-  const message = '✅ *Ходатайство ' + typeName + ' одобрено!*\n━━━━━━━━━━━━━━━━━━━━\nРаспечатайте и подпишите в каб. 306-2.\n\nСкачать .docx можно в приложении: @fcadbot_bot';
+  const message = '✅ *Ходатайство ' + typeName + ' одобрено!*\n━━━━━━━━━━━━━━━━━━━━\nРаспечатайте и подпишите в каб. 306-2.\n\nСкачать .docx можно в приложении: @fcadbot\\_bot';
   try { await bot.sendMessage(petition.student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
@@ -249,7 +263,7 @@ export async function checkMilestone(studentId: number) {
     const maxSlots = Math.floor(attendedCount / 5);
     const availableSlots = maxSlots - existingPetitions;
     if (availableSlots > 0) {
-      const message = '🎉 *Поздравляем! Вы посетили ' + attendedCount + ' мероприятий!*\n━━━━━━━━━━━━━━━━━━━━\nВы можете подать ходатайство (доступно: ' + availableSlots + ' шт.).\n\nОткройте приложение студсовета: @fcadbot_bot';
+      const message = '🎉 *Поздравляем! Вы посетили ' + attendedCount + ' мероприятий!*\n━━━━━━━━━━━━━━━━━━━━\nВы можете подать ходатайство (доступно: ' + availableSlots + ' шт.).\n\nОткройте приложение студсовета: @fcadbot\\_bot';
       try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
     }
   }

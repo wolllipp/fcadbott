@@ -117,13 +117,7 @@ export default function SectorPage({ coordinator }: Props) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <button onClick={() => window.history.length > 1 ? window.history.back() : null}
-              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 10, padding: '6px 12px', color: 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'var(--font)' }}>
-              ← Назад
-            </button>
-            <h1 style={{ fontSize: 22, fontWeight: 700 }}>Мой сектор</h1>
-          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Мой сектор</h1>
           {coordinator.sector && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{coordinator.sector}</div>}
         </div>
         <div className="page-scroll" style={{ padding: '0 16px' }}>
@@ -139,7 +133,7 @@ export default function SectorPage({ coordinator }: Props) {
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{s.fullName}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                        {s.budgetStatus === 'PAID' ? '🟡 Платка' : s.budgetStatus === 'NO_STIPEND' ? '⚪ Без стипендии' : '🟢 Бюджет'}
+                        {s.budgetStatus === 'PAID' ? <span className="badge badge-yellow">Платка</span> : s.budgetStatus === 'NO_STIPEND' ? <span className="badge badge-gray">Без стипендии</span> : <span className="badge badge-green">Бюджет</span>}
                       </div>
                     </div>
                     <button onClick={() => removeStudentFromMySector(s.id)}
@@ -215,8 +209,9 @@ export default function SectorPage({ coordinator }: Props) {
                 </div>
                 <span style={{ color: 'var(--text-muted)', fontSize: 16, marginTop: 4 }}>{isExpanded ? '▾' : '▸'}</span>
               </div>
-              {isExpanded && (
-                <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+              <div className={'expandable-grid' + (isExpanded ? ' open' : '')}>
+                  <div>
+                    <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
                   {data.students.length === 0 ? (
                     <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Нет студентов</div>
                   ) : (
@@ -226,7 +221,7 @@ export default function SectorPage({ coordinator }: Props) {
                           <div style={{ fontSize: 14, fontWeight: 500 }}>{s.fullName}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                            {s.budgetStatus === 'PAID' ? '🟡 Платка' : s.budgetStatus === 'NO_STIPEND' ? '⚪ Без стипендии' : '🟢 Бюджет'}
+                            {s.budgetStatus === 'PAID' ? <span className="badge badge-yellow">Платка</span> : s.budgetStatus === 'NO_STIPEND' ? <span className="badge badge-gray">Без стипендии</span> : <span className="badge badge-green">Бюджет</span>}
                           </div>
                         </div>
                         <button onClick={() => removeStudentFromSector(s.id, secName)}
@@ -234,8 +229,9 @@ export default function SectorPage({ coordinator }: Props) {
                       </div>
                     ))
                   )}
-                </div>
-              )}
+                    </div>
+                  </div>
+              </div>
             </div>
           );
         })}

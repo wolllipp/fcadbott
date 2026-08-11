@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 function canManageSector(role: string): boolean {
   return role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN' || role === 'SECRETARY';

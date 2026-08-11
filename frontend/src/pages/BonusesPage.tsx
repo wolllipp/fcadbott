@@ -53,6 +53,11 @@ export default function BonusesPage({ coordinator }: Props) {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [editEntries, setEditEntries] = useState<BonusEntry[]>([]);
+  const [showEditPicker, setShowEditPicker] = useState(false);
+  const [editPickerIds, setEditPickerIds] = useState<number[]>([]);
+  const [editExternalStudents, setEditExternalStudents] = useState<ExternalStudent[]>([]);
+  const [showEditExternalModal, setShowEditExternalModal] = useState(false);
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   const [newEntry, setNewEntry] = useState<{
     fullName: string; groupNumber: string; studentCardNumber: string;
     amount: string; reason: string;
@@ -67,7 +72,7 @@ export default function BonusesPage({ coordinator }: Props) {
   }
 
   useEffect(() => {
-    if (step === 'pick') {
+    if (step === 'pick' || step === 'edit-submission') {
       api.students.list({
         sector: isChairman ? undefined : (coordinator.sector || undefined),
         role: coordinator.role,
@@ -173,6 +178,18 @@ export default function BonusesPage({ coordinator }: Props) {
     const updated = [...editEntries];
     updated[i] = { ...updated[i], [field]: value };
     setEditEntries(updated);
+  }
+
+  function removeEditEntry(i: number) {
+    setEditEntries(editEntries.filter((_, idx) => idx !== i));
+  }
+
+  function addEditEntry() {
+    setEditEntries([...editEntries, {
+      fullName: "", groupNumber: "", amount: "", reason: "",
+      budgetStatus: "BUDGET",
+      budgetStudentName: "", budgetStudentGroup: "", budgetStudentCard: "",
+    }]);
   }
 
   async function saveCoordinatorEdits() {
@@ -353,15 +370,21 @@ export default function BonusesPage({ coordinator }: Props) {
               const [yr, mo] = key.split('-').map(Number);
               const total = subs.reduce((sum, s) => sum + s.entries.reduce((s2: number, e: any) => s2 + Number(e.amount), 0), 0);
               const allApproved = subs.every(s => s.status === 'APPROVED');
+              const isOpen = expandedMonths[key] ?? (mo === currentMonth && yr === currentYear);
+              const toggleKey = key;
               return (
-                <div key={key} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div className="section-label" style={{ margin: 0 }}>{MONTH_NAMES[mo]} {yr}</div>
+                <div key={key} style={{ marginBottom: 12 }}>
+                  <div onClick={() => setExpandedMonths({...expandedMonths, [toggleKey]: !isOpen})} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-raised)', borderRadius: 12, border: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{total} BYN</span>
+                      <span style={{ fontSize: 14, color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'none' }}>▸</span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{MONTH_NAMES[mo]} {yr}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{subs.length} заявк{subs.length === 1 ? 'а' : 'и'} · {total} BYN</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {allApproved && (canManageBonuses || isSecretary) && (
-                        <button
-                          onClick={() => generateDoc(mo, yr)}
+                        <button onClick={(e) => { e.stopPropagation(); generateDoc(mo, yr); }}
                           disabled={generatingDoc}
                           style={{
                             background: 'var(--accent)', color: 'white', border: 'none',
@@ -369,57 +392,94 @@ export default function BonusesPage({ coordinator }: Props) {
                             cursor: generatingDoc ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)',
                             opacity: generatingDoc ? 0.6 : 1,
                           }}>
-                          {generatingDoc ? '...' : '📄 Сформировать докладную'}
+                          {generatingDoc ? '...' : '📄 Докладная'}
                         </button>
                       )}
                     </div>
                   </div>
-                  {subs.map((s) => {
-                    const subTotal = s.entries.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
-                    const statusLabel = s.status === 'APPROVED' ? 'Подтверждено' : s.status === 'DEFERRED' ? 'Перенесено' : 'Ожидает';
-                    const statusClass = s.status === 'APPROVED' ? 'badge-green' : s.status === 'DEFERRED' ? 'badge-yellow' : 'badge-accent';
-                    const canClick = (isChairman || coordinator.role === 'DEAN' || isSecretary);
-                    return (
-                      <div key={s.id} className="card" style={{ marginBottom: 8, cursor: canClick ? 'pointer' : 'default' }}
-                        onClick={() => { if (canClick) { setSelectedSubmission(s); setStep('chairman-detail'); } }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{s.coordinator.fullName}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.entries.length} студ. · {subTotal} BYN</div>
+                  {isOpen && (
+                    <div style={{ marginTop: 8, animation: 'fadeIn 0.15s ease' }}>
+                      {subs.map((s) => {
+                        const subTotal = s.entries.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
+                        const statusLabel = s.status === 'APPROVED' ? 'Подтверждено' : s.status === 'DEFERRED' ? 'Перенесено' : 'Ожидает';
+                        const statusClass = s.status === 'APPROVED' ? 'badge-green' : s.status === 'DEFERRED' ? 'badge-yellow' : 'badge-accent';
+                        const canClick = (isChairman || coordinator.role === 'DEAN' || isSecretary);
+                        return (
+                          <div key={s.id} className="card" style={{ marginBottom: 6, cursor: canClick ? 'pointer' : 'default' }}
+                            onClick={() => { if (canClick) { setSelectedSubmission(s); setStep('chairman-detail'); } }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{s.coordinator.fullName}</div>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.entries.length} студ. · {subTotal} BYN</div>
+                              </div>
+                              <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                            </div>
                           </div>
-                          <span className={`badge ${statusClass}`}>{statusLabel}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })
+          ) : submissions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>История пуста</div>
           ) : (
-            submissions.map((s) => {
-              const total = s.entries.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
-              const statusLabel = s.status === 'APPROVED' ? 'Подтверждено' : s.status === 'DEFERRED' ? 'Перенесено' : 'На рассмотрении';
-              const statusClass = s.status === 'APPROVED' ? 'badge-green' : s.status === 'DEFERRED' ? 'badge-yellow' : 'badge-accent';
+            Object.entries(groupedByMonth).sort(([a], [b]) => b.localeCompare(a)).map(([key, subs]) => {
+              const [yr, mo] = key.split('-').map(Number);
+              const monthTotal = subs.reduce((sum, s) => sum + s.entries.reduce((s2: number, e: any) => s2 + Number(e.amount), 0), 0);
+              const isOpen = expandedMonths[key] ?? (mo === currentMonth && yr === currentYear);
+              const toggleKey = key;
               return (
-                <div key={s.id} className="card" style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 16 }}>{MONTH_NAMES[s.month]} {s.year}</div>
-                    <span className={`badge ${statusClass}`}>{statusLabel}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    {s.entries.length} студентов · {total} BYN
-                  </div>
-                  {s.entries.map((e: any, i: number) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--border)', fontSize: 13 }}>
-                      <span>{e.student?.fullName || e.externalName}</span>
-                      <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{e.amount} BYN</span>
+                <div key={key} style={{ marginBottom: 12 }}>
+                  <div onClick={() => setExpandedMonths({...expandedMonths, [toggleKey]: !isOpen})} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-raised)', borderRadius: 12, border: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14, color: 'var(--text-muted)', transition: 'transform 0.2s', display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'none' }}>▸</span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{MONTH_NAMES[mo]} {yr}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{subs.length} заявк{subs.length === 1 ? 'а' : 'и'} · {monthTotal} BYN</div>
+                      </div>
                     </div>
-                  ))}
-                  {s.status === 'PENDING' && (
-                    <button className="btn btn-ghost" style={{ marginTop: 10, padding: '8px 12px', fontSize: 13 }}
-                      onClick={() => { setSelectedSubmission(s); startEditSubmission(); }}>
-                      ✎ Редактировать
-                    </button>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                  {isOpen && (
+                    <div style={{ marginTop: 8, animation: 'fadeIn 0.15s ease' }}>
+                      {subs.map((s) => {
+                        const total = s.entries.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
+                        const statusLabel = s.status === 'APPROVED' ? 'Подтверждено' : s.status === 'DEFERRED' ? 'Перенесено' : 'На рассмотрении';
+                        const statusClass = s.status === 'APPROVED' ? 'badge-green' : s.status === 'DEFERRED' ? 'badge-yellow' : 'badge-accent';
+                        return (
+                          <div key={s.id} className="card" style={{ marginBottom: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                              <div style={{ fontWeight: 600, fontSize: 14 }}>{s.coordinator?.fullName || 'Ваша заявка'}</div>
+                              <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                              {s.entries.length} студентов · {total} BYN
+                            </div>
+                            {s.entries.map((e: any, i: number) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--border)', fontSize: 13 }}>
+                                <span>
+                                  {e.student?.fullName || e.externalName}
+                                  {e.budgetStudentName && (
+                                    <span style={{ fontSize: 11, color: 'var(--warning)' }}>
+                                      {" "}(через {e.budgetStudentName})
+                                    </span>
+                                  )}
+                                </span>
+                                <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{e.amount} BYN</span>
+                              </div>
+                            ))}
+                            {s.status === 'PENDING' && (
+                              <button className="btn btn-ghost" style={{ marginTop: 10, padding: '8px 12px', fontSize: 13 }}
+                                onClick={() => { setSelectedSubmission(s); startEditSubmission(); }}>
+                                ✎ Редактировать
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               );
@@ -548,7 +608,14 @@ export default function BonusesPage({ coordinator }: Props) {
             <div key={e.id || i} className="card" style={{ marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{e.student?.fullName || e.externalName}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    {e.student?.fullName || e.externalName}
+                    {e.budgetStudentName && (
+                      <span style={{ fontSize: 11, color: 'var(--warning)' }}>
+                        {" "}(через {e.budgetStudentName})
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>гр. {e.student?.groupNumber || e.externalGroup}</div>
                   {editMode ? (
                     <input className="input" type="number" value={e.amount} style={{ marginTop: 8, fontSize: 14 }}
@@ -618,7 +685,15 @@ export default function BonusesPage({ coordinator }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
             {editEntries.map((e, i) => (
               <div key={i} className="card">
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{e.fullName}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div style={{ fontWeight: 600 }}>
+                    <span>{e.fullName} {e.budgetStudentName && ('(через ' + e.budgetStudentName + ')')}</span>
+                  </div>
+                  <button onClick={() => removeEditEntry(i)} style={{
+                    background: 'none', border: 'none', color: 'var(--danger)',
+                    fontSize: 18, cursor: 'pointer', padding: '0 4px',
+                  }} title="Удалить">×</button>
+                </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>гр. {e.groupNumber}</div>
                 <input className="input" type="number" placeholder="Сумма, BYN *" value={e.amount}
                   onChange={(ev) => updateEditEntry(i, 'amount', ev.target.value)} style={{ marginBottom: 8 }} />
@@ -643,6 +718,117 @@ export default function BonusesPage({ coordinator }: Props) {
               onClick={saveCoordinatorEdits}>
               {submitting ? 'Сохранение...' : '✓ Сохранить'}
             </button>
+          </div>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>+ Добавить студента</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <button onClick={() => setShowEditPicker(!showEditPicker)} style={{
+                flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid',
+                borderColor: showEditPicker ? 'var(--accent)' : 'var(--border)',
+                background: showEditPicker ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                color: showEditPicker ? 'var(--accent)' : 'var(--text-secondary)',
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>
+                {showEditPicker ? '✓ Выбрать из списка' : '📋 Из списка'}
+              </button>
+              <button onClick={() => setShowEditPicker(false)} style={{
+                flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid',
+                borderColor: !showEditPicker ? 'var(--accent)' : 'var(--border)',
+                background: !showEditPicker ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                color: !showEditPicker ? 'var(--accent)' : 'var(--text-secondary)',
+                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>
+                ✍ Ввести вручную
+              </button>
+            </div>
+
+            {showEditPicker ? (
+              <div>
+                {students.length === 0 ? (
+                  <div style={{ padding: '10px 0', color: 'var(--text-muted)', fontSize: 13 }}>Загрузка студентов...</div>
+                ) : (
+                  <>
+                    <div style={{ maxHeight: 250, overflow: 'auto', marginBottom: 10 }}>
+                      {students.map((s) => {
+                        const sel = editPickerIds.includes(s.id);
+                        return (
+                          <div key={s.id} className={`chip ${sel ? 'selected' : ''}`} onClick={() => {
+                            if (sel) {
+                              setEditPickerIds(editPickerIds.filter((id) => id !== s.id));
+                            } else {
+                              setEditPickerIds([...editPickerIds, s.id]);
+                            }
+                          }} style={{ marginBottom: 4 }}>
+                            <div className="chip-check">
+                              {sel && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 500, fontSize: 14 }}>{s.fullName}</div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-ghost" onClick={() => {
+                        setShowEditExternalModal(true);
+                      }} style={{ flex: 1, fontSize: 13 }}>
+                        + Внешний
+                      </button>
+                      <button className="btn btn-primary" disabled={editPickerIds.length === 0}
+                        onClick={() => {
+                          const selectedStudents = students.filter((s) => editPickerIds.includes(s.id));
+                          const newEntries = selectedStudents.map((s) => ({
+                            fullName: s.fullName,
+                            groupNumber: s.groupNumber,
+                            studentId: s.id,
+                            amount: '',
+                            reason: 'Организация мероприятий на факультете и в университете и участие в них',
+                            budgetStatus: (s as any).budgetStatus || 'BUDGET',
+                            budgetStudentName: '', budgetStudentGroup: '', budgetStudentCard: '',
+                          }));
+                          setEditEntries([...editEntries, ...newEntries]);
+                          setEditPickerIds([]);
+                        }}
+                        style={{ flex: 1, fontSize: 13 }}>
+                        + Добавить ({editPickerIds.length})
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div>
+                <input className="input" placeholder="ФИО *" value={newEntry.fullName}
+                  onChange={(e) => setNewEntry({ ...newEntry, fullName: e.target.value })} style={{ marginBottom: 6 }} />
+                <input className="input" placeholder="Группа *" value={newEntry.groupNumber}
+                  onChange={(e) => setNewEntry({ ...newEntry, groupNumber: e.target.value })} style={{ marginBottom: 6 }} />
+                <input className="input" placeholder="Номер студенческого *" value={newEntry.studentCardNumber}
+                  onChange={(e) => setNewEntry({ ...newEntry, studentCardNumber: e.target.value })} style={{ marginBottom: 6 }} />
+                <input className="input" type="number" placeholder="Сумма, BYN *" value={newEntry.amount}
+                  onChange={(e) => setNewEntry({ ...newEntry, amount: e.target.value })} style={{ marginBottom: 6 }} />
+                <input className="input" placeholder="Основание" value={newEntry.reason}
+                  onChange={(e) => setNewEntry({ ...newEntry, reason: e.target.value })} style={{ marginBottom: 8 }} />
+                <button className="btn btn-ghost" disabled={!newEntry.fullName || !newEntry.groupNumber || !newEntry.studentCardNumber || !newEntry.amount}
+                  onClick={() => {
+                    setEditEntries([...editEntries, {
+                      fullName: newEntry.fullName,
+                      groupNumber: newEntry.groupNumber,
+                      externalName: newEntry.fullName,
+                      externalGroup: newEntry.groupNumber,
+                      externalCardNumber: newEntry.studentCardNumber,
+                      amount: newEntry.amount,
+                      reason: newEntry.reason || "Организация мероприятий",
+                      budgetStatus: "BUDGET",
+                      budgetStudentName: "", budgetStudentGroup: "", budgetStudentCard: "",
+                    }]);
+                    setNewEntry({ fullName: "", groupNumber: "", studentCardNumber: "", amount: "", reason: "" });
+                  }}>
+                  + Добавить в список
+                </button>
+              </div>
+            )}
           </div>
           <div style={{ height: 20 }} />
         </div>

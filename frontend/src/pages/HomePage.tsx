@@ -100,7 +100,7 @@ export default function HomePage({ coordinator, onNavigate }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
               { label: 'Студентов', value: stats.students },
-              { label: 'Секторов', value: stats.coordinators },
+              { label: 'Координаторов', value: stats.coordinators },
               { label: 'Мероприятий', value: stats.events },
               { label: 'Ходатайств', value: stats.pendingPetitions, accent: stats.pendingPetitions > 0 },
             ].map((item) => (

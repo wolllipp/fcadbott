@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors({ origin: 'https://fcadbot.site' }));
 app.use(express.json());
+app.use(express.static('../frontend/dist'));
 
 app.use('/api/auth', authRouter);
 app.use('/api/students', studentsRouter);
@@ -30,11 +31,16 @@ app.use('/api/petitions', petitionsRouter);
 
 app.post('/api/bot-webhook', (req, res) => {
   const b = getBot();
-  if (b) (b as any).processWebHook(req, res);
+  if (b) { b.processUpdate(req.body); res.sendStatus(200); }
   else res.status(503).json({ error: 'Bot not initialized' });
 });
 
 app.get('/health', (_, res) => res.json({ ok: true }));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile('/root/fcadbott/fkp-ss-app/frontend/dist/index.html');
+});
 
 app.listen(Number(PORT), "127.0.0.1", async () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);

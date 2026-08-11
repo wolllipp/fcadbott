@@ -296,3 +296,16 @@ input[type="date"]::-webkit-datetime-edit {
   align-items: center;
   min-height: 1.5em;
 }
+
+/* Expandable section (smooth open/close) */
+.expandable-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s ease;
+}
+.expandable-grid.open {
+  grid-template-rows: 1fr;
+}
+.expandable-grid > div {
+  overflow: hidden;
+}

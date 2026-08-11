@@ -17,7 +17,7 @@ const SECTOR_LABELS: Record<string, string> = {
 
 const SECTOR_OPTIONS = [
   'Научка', 'Инструментал', 'Танцевальный', 'Театрал', 'Учебный',
-  'Вокал', 'Культмассовый', 'Декор', 'Спорт', 'Проф', 'Информ', 'Председ/Зам/Секретарь',
+  'Вокал', 'Культмассовый', 'Декор', 'Спорт', 'Проф', 'Информ', 
 ];
 
 const STATUS_OPTIONS = [
@@ -140,7 +140,7 @@ export default function CouncilPage({ coordinator }: CouncilProps) {
   const studentsBySector: Record<string, any[]> = {};
   students.forEach((s) => {
     const sectors = s.sectors && s.sectors.length > 0 ? s.sectors : ['Без сектора'];
-    sectors.forEach((sec: string) => {
+    sectors.filter((sec: string) => sec !== 'Председ/Зам/Секретарь').forEach((sec: string) => {
       if (!studentsBySector[sec]) studentsBySector[sec] = [];
       studentsBySector[sec].push(s);
     });
@@ -214,15 +214,16 @@ export default function CouncilPage({ coordinator }: CouncilProps) {
                     </div>
                     <span style={{ color: 'var(--text-muted)', fontSize: 16, transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▾</span>
                   </div>
-                  {isExpanded && (
-                    <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                  <div className={'expandable-grid' + (isExpanded ? ' open' : '')}>
+                    <div>
+                      <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
                       {sectorStudents.map((s, i) => (
                         <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < sectorStudents.length - 1 ? '1px solid var(--border)' : 'none' }}>
                           <div>
                             <div style={{ fontWeight: 500, fontSize: 13 }}>{s.fullName}</div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>гр. {s.groupNumber} · ст. {s.studentCardNumber}</div>
                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                              {s.budgetStatus === 'PAID' ? '🟡 Платка' : s.budgetStatus === 'NO_STIPEND' ? '⚪ Без стипендии' : '🟢 Бюджет'}
+                              {s.budgetStatus === 'PAID' ? <span className="badge badge-yellow">Платка</span> : s.budgetStatus === 'NO_STIPEND' ? <span className="badge badge-gray">Без стипендии</span> : <span className="badge badge-green">Бюджет</span>}
                               {s.sectors?.length ? ' · ' + s.sectors.join(', ') : ''}
                             </div>
                           </div>
@@ -231,7 +232,8 @@ export default function CouncilPage({ coordinator }: CouncilProps) {
                         </div>
                       ))}
                     </div>
-                  )}
+                      </div>
+                    </div>
                 </div>
               );
             })}

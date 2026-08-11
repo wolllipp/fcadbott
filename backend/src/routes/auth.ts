@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 function verifyTelegramWebAppData(initData: string): Record<string, string> | null {
   const params = new URLSearchParams(initData);

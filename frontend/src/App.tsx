@@ -104,7 +104,7 @@ export default function App() {
       } catch (_) {}
     }
     fetchPending();
-    const iv = setInterval(fetchPending, 10000);
+    const iv = setInterval(fetchPending, 30000);
     return () => clearInterval(iv);
   }, []);
 

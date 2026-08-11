@@ -95,8 +95,24 @@ export default function ExemptionsPage({ coordinator }: Props) {
   const [editingExemption, setEditingExemption] = useState<any>(null);
   const [showExternalModal, setShowExternalModal] = useState(false);
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
+  const [showBellModal, setShowBellModal] = useState(false);
+  const [nonExhibitedList, setNonExhibitedList] = useState<any[]>([]);
+  const [nonExhibitedCount, setNonExhibitedCount] = useState(0);
+  const [loadingBell, setLoadingBell] = useState(false);
 
   useEffect(() => { loadData(); }, [weekOffset]);
+
+  useEffect(() => {
+    if (canToggleExhibited) {
+      api.exemptions.nonExhibited().then((data: any[]) => setNonExhibitedCount(data.length)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (canToggleExhibited) {
+      api.exemptions.nonExhibited().then((data: any[]) => setNonExhibitedCount(data.length)).catch(() => {});
+    }
+  }, [exemptions]);
 
   async function loadData() {
     const key = weekOffset === 0 ? 'current' : 'other';
@@ -172,6 +188,13 @@ export default function ExemptionsPage({ coordinator }: Props) {
   async function toggleExhibited(id: number) {
     try {
       await api.exemptions.toggleExhibited(id, coordinator.role);
+      await loadData();
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function togglePrinted(id: number) {
+    try {
+      await api.exemptions.togglePrinted(id, coordinator.role);
       await loadData();
     } catch (e: any) { alert(e.message); }
   }
@@ -469,6 +492,19 @@ export default function ExemptionsPage({ coordinator }: Props) {
                             {ex.isExhibited ? '✓ Выставлено' : '○ Выставить'}
                           </button>
                         )}
+                        {canToggleExhibited && (
+                          <button onClick={() => togglePrinted(ex.id)}
+                            style={{
+                              background: ex.isPrinted ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                              border: `1px solid ${ex.isPrinted ? 'var(--accent)' : 'var(--border)'}`,
+                              borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                              color: ex.isPrinted ? 'var(--accent)' : 'var(--text-secondary)',
+                              fontSize: 12, fontWeight: 600,
+                              animation: ex.isPrinted ? "pulse 0.3s ease" : "none",
+                            }}>
+                            {ex.isPrinted ? '✓ Распечатано' : '○ Распечатать'}
+                          </button>
+                        )}
                         {(canManageExemptions || !ex.isExhibited) && (
                           <button onClick={() => startEdit(ex)}
                             style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>
@@ -502,7 +538,28 @@ export default function ExemptionsPage({ coordinator }: Props) {
             ← Назад
           </button>
         )}
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Освобождения</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Освобождения</h1>
+          {canToggleExhibited && (
+            <button onClick={async () => {
+              setShowBellModal(true);
+              setLoadingBell(true);
+              try {
+                const data = await api.exemptions.nonExhibited();
+                setNonExhibitedList(data);
+              } catch (e: any) { alert(e.message); }
+              finally { setLoadingBell(false);
+            }}} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span style={{ fontWeight: 700, color: (nonExhibitedCount > 0) ? 'var(--error)' : 'var(--text-muted)', minWidth: 16, textAlign: 'center' }}>
+                {nonExhibitedCount}
+              </span>
+            </button>
+          )}
+        </div>
 
         {(isChairman || isSecretary) && (step === 'calendar' || step === 'pending-list') && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -572,6 +629,19 @@ export default function ExemptionsPage({ coordinator }: Props) {
                         animation: ex.isExhibited ? "pulse 0.3s ease" : "none",
                       }}>
                       {ex.isExhibited ? '✓ Выставлено' : '○ Выставить'}
+                    </button>
+                  )}
+                  {canToggleExhibited && (
+                    <button onClick={() => togglePrinted(ex.id)}
+                      style={{
+                        background: ex.isPrinted ? 'var(--accent-dim)' : 'var(--bg-raised)',
+                        border: `1px solid ${ex.isPrinted ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: 8, padding: '4px 10px', cursor: 'pointer',
+                        color: ex.isPrinted ? 'var(--accent)' : 'var(--text-secondary)',
+                        fontSize: 12, fontWeight: 600,
+                        animation: ex.isPrinted ? "pulse 0.3s ease" : "none",
+                      }}>
+                      {ex.isPrinted ? '✓ Распечатано' : '○ Распечатать'}
                     </button>
                   )}
                   <button onClick={() => startEdit(ex)}
@@ -726,6 +796,42 @@ export default function ExemptionsPage({ coordinator }: Props) {
         </div>
       )}
 
+      {showBellModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', animation: 'fadeIn 0.15s ease' }}
+          onClick={() => setShowBellModal(false)}>
+          <div style={{ width: '100%', maxWidth: 420, maxHeight: '70vh', background: 'var(--bg-card)', borderRadius: '16px 16px 0 0', padding: 20, overflow: 'auto', animation: 'menuFadeIn 0.2s ease' }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div className="section-label" style={{ margin: 0, fontSize: 16 }}>Не готово ({nonExhibitedList.length})</div>
+              <button onClick={() => setShowBellModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+            {loadingBell ? (
+              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)' }}>Загрузка...</div>
+            ) : nonExhibitedList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: 14 }}>Все готово ✓</div>
+            ) : (
+              nonExhibitedList.map((ex: any) => (
+                <div key={ex.id} className="card" style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>{fmtDate(ex.exemptionDate)}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{ex.coordinator.fullName}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{ex.reason}</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => { toggleExhibited(ex.id); setShowBellModal(false); }}
+                      style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
+                      Выставить
+                    </button>
+                    <button onClick={() => { togglePrinted(ex.id); }}
+                      style={{ background: ex.isPrinted ? 'var(--accent-dim)' : 'var(--bg-raised)', border: `1px solid ${ex.isPrinted ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: ex.isPrinted ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>
+                      {ex.isPrinted ? '✓ Распечатано' : '○ Распечатать'}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {step === 'confirm' && (
         <div className="page-scroll" style={{ padding: '0 16px' }}>
           <div className="card" style={{ marginBottom: 14 }}>
@@ -734,7 +840,7 @@ export default function ExemptionsPage({ coordinator }: Props) {
           </div>
           <div style={{ marginBottom: 14 }}>
             <div className="section-label">Причина освобождения *</div>
-            <textarea className="input" placeholder="Укажите причину..." value={reason} onChange={(e) => setReason(e.target.value)} rows={3} style={{ resize: 'none' }} />
+            <textarea className="input" placeholder="Укажите причину... (пиши с маленькой буквы, в творительном падеже)" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} style={{ resize: 'none' }} />
           </div>
           <div className="section-label">Выбранные студенты ({selectedIds.length + externalStudents.filter(e => e.fullName).length})</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>

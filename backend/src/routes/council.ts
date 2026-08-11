@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient, Role, BudgetStatus } from '@prisma/client';
+import { Role, BudgetStatus } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { SECTOR_MAP } from './students';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 function canManageCouncil(role: string): boolean {
   return role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN' || role === 'SECRETARY';

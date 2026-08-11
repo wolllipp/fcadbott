@@ -40,6 +40,8 @@ export const api = {
     update: (id: number, data: any) => apiRequest(`/exemptions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: number) => apiRequest(`/exemptions/${id}`, { method: 'DELETE' }),
     toggleExhibited: (id: number, role: string) => apiRequest(`/exemptions/${id}/toggle-exhibited`, { method: 'POST', body: JSON.stringify({ role }) }),
+    togglePrinted: (id: number, role: string) => apiRequest(`/exemptions/${id}/toggle-printed`, { method: 'POST', body: JSON.stringify({ role }) }),
+    nonExhibited: () => apiRequest('/exemptions/non-exhibited'),
     approve: (id: number, role: string) => apiRequest(`/exemptions/${id}/approve`, { method: 'POST', body: JSON.stringify({ role }) }),
     reject: (id: number, role: string, rejectReason?: string) => apiRequest(`/exemptions/${id}/reject`, { method: 'POST', body: JSON.stringify({ role, rejectReason }) }),
   },
