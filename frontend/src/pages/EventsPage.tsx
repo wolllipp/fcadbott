@@ -36,9 +36,9 @@ export default function EventsPage({ coordinator }: Props) {
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
-  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '' });
+  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0 });
   const [newParticipant, setNewParticipant] = useState({ fullName: '', groupNumber: '' });
-  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '' });
+  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0 });
   const [exemptionDate, setExemptionDate] = useState('');
   const [exemptionReason, setExemptionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -51,8 +51,9 @@ export default function EventsPage({ coordinator }: Props) {
   });
   const [selectedExternalIndices, setSelectedExternalIndices] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [coordinatorsList, setCoordinatorsList] = useState<{ id: number; fullName: string; telegramUsername: string; role: string }[]>([]);
 
-  useEffect(() => { loadEvents(); }, []);
+  useEffect(() => { loadEvents(); api.events.coordinators().then(setCoordinatorsList).catch(() => {}); }, []);
 
   useEffect(() => {
     localStorage.setItem('extParticipants', JSON.stringify(externalParticipants));
@@ -83,8 +84,8 @@ export default function EventsPage({ coordinator }: Props) {
     if (!newEvent.name || !newEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.create({ ...newEvent, coordinatorId: coordinator.id, role: coordinator.role });
-      setNewEvent({ name: '', eventDate: '', description: '' });
+      await api.events.create({ ...newEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorId: newEvent.scannerCoordinatorId || coordinator.id });
+      setNewEvent({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0 });
       setStep('list');
       await loadEvents();
     } catch (e: any) { alert(e.message); }
@@ -95,7 +96,7 @@ export default function EventsPage({ coordinator }: Props) {
     if (!selectedEvent || !editingEvent.name || !editingEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role });
+      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorId: editingEvent.scannerCoordinatorId || null });
       setStep('list');
       await loadEvents();
     } catch (e: any) { alert(e.message); }
@@ -249,16 +250,31 @@ export default function EventsPage({ coordinator }: Props) {
               events.map((ev, i) => (
                 <div key={ev.id} className="card" style={{ marginBottom: 10, cursor: 'pointer', animation: `fadeIn 0.25s ease ${i * 0.04}s both` }}
                   onClick={() => { setSelectedEvent(ev); setStep('detail'); }}>
-                  <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 4 }}>{ev.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{fmtDate(ev.eventDate)}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                    <div style={{ fontWeight: 700, fontSize: 17 }}>{ev.name}</div>
+                    {(ev as any).status === 'DRAFT' ? <span className="badge badge-gray" style={{ fontSize: 10 }}>Черновик</span> :
+                     (ev as any).status === 'PUBLISHED' ? <span className="badge badge-green" style={{ fontSize: 10 }}>● Опубликовано</span> :
+                     (ev as any).status === 'COMPLETED' ? <span className="badge badge-gray" style={{ fontSize: 10 }}>● Завершено</span> : null}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{fmtDate(ev.eventDate)} {(ev as any).location ? `· ${(ev as any).location}` : ''}</div>
                   {ev.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{ev.description}</div>}
-                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                     <span>Участников: {ev.participants.length}</span>
                     <span>Было: {ev.participants.filter((p) => p.attended).length}</span>
+                    {(ev as any).pointsForAttendance ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>+{(ev as any).pointsForAttendance} б.</span> : null}
+                    {(ev as any).audience === 'SS' ? <span style={{ color: 'var(--warning)' }}>Студсовет</span> : (ev as any).audience === 'FKP' ? <span style={{ color: 'var(--accent)' }}>ФКП</span> : null}
+                    {(ev as any).creator && <span style={{ fontSize: 11 }}>создал: {(ev as any).creator.fullName}</span>}
+                    {(ev as any).scannerCoordinator && (ev as any).scannerCoordinator.id !== (ev as any).creator?.id && <span style={{ fontSize: 11 }}>отмечающий: {(ev as any).scannerCoordinator.fullName}</span>}
                   </div>
                   {(isAdmin || (ev.createdBy === coordinator.id && !ev.attendanceFinalized)) && (
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '' }); setStep('edit'); }}
+                      {(ev as any).status === 'DRAFT' && (
+                        <button onClick={(e) => { e.stopPropagation(); api.events.update(ev.id, { status: 'PUBLISHED', coordinatorId: coordinator.id, role: coordinator.role }).then(() => loadEvents()); }}
+                          style={{ background: 'var(--success)', border: 'none', borderRadius: 8, padding: '6px 14px', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                          Опубликовать
+                        </button>
+                      )}
+                      <button                       onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '', location: (ev as any).location || '', status: (ev as any).status || 'DRAFT', pointsForAttendance: (ev as any).pointsForAttendance || 0, maxParticipants: (ev as any).maxParticipants || 0, audience: (ev as any).audience || 'ALL', facultyOnly: (ev as any).facultyOnly || false, scannerCoordinatorId: (ev as any).scannerCoordinatorId || 0 }); setStep('edit'); }}
                         style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 15 }}>
                         ✎
                       </button>
@@ -288,10 +304,71 @@ export default function EventsPage({ coordinator }: Props) {
             <textarea className="input" placeholder="Описание (необязательно)" rows={3} style={{ resize: 'none' }}
               value={step === 'create' ? newEvent.description : editingEvent.description}
               onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, description: e.target.value }) : setEditingEvent({ ...editingEvent, description: e.target.value })} />
-            <button className="btn btn-primary" disabled={submitting || !(step === 'create' ? (newEvent.name && newEvent.eventDate) : (editingEvent.name && editingEvent.eventDate))}
-              onClick={step === 'create' ? createEvent : updateEvent}>
-              {submitting ? '...' : (step === 'create' ? 'Создать' : 'Сохранить')}
-            </button>
+            <div className="section-label">Место проведения</div>
+            <input className="input" placeholder="Аудитория, корпус..."
+              value={step === 'create' ? newEvent.location : editingEvent.location}
+              onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, location: e.target.value }) : setEditingEvent({ ...editingEvent, location: e.target.value })} />
+            <div className="section-label">Аудитория</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[
+                { id: 'ALL', label: 'Все студенты' },
+                { id: 'FKP', label: 'ФКП' },
+                { id: 'SS', label: 'Студсовет' },
+              ].map(a => (
+                <button key={a.id} onClick={() => step === 'create' ? setNewEvent({ ...newEvent, audience: a.id }) : setEditingEvent({ ...editingEvent, audience: a.id })}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: 8, border: 'none',
+                    background: (step === 'create' ? newEvent.audience : editingEvent.audience) === a.id ? 'var(--accent)' : 'var(--bg-raised)',
+                    color: (step === 'create' ? newEvent.audience : editingEvent.audience) === a.id ? 'white' : 'var(--text)',
+                    fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                  }}>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <div className="section-label">Баллы за посещение</div>
+            <input className="input" type="number" min={0} placeholder="0"
+              value={step === 'create' ? newEvent.pointsForAttendance || '' : editingEvent.pointsForAttendance || ''}
+              onChange={(e) => {
+                const v = parseInt(e.target.value) || 0;
+                step === 'create' ? setNewEvent({ ...newEvent, pointsForAttendance: v }) : setEditingEvent({ ...editingEvent, pointsForAttendance: v });
+              }} />
+            <div className="section-label">Макс. участников</div>
+            <input className="input" type="number" min={0} placeholder="Без ограничений"
+              value={step === 'create' ? newEvent.maxParticipants || '' : editingEvent.maxParticipants || ''}
+              onChange={(e) => {
+                const v = parseInt(e.target.value) || 0;
+                step === 'create' ? setNewEvent({ ...newEvent, maxParticipants: v }) : setEditingEvent({ ...editingEvent, maxParticipants: v });
+              }} />
+            <div className="section-label">Отмечающий на мероприятии</div>
+            <select className="input"
+              value={step === 'create' ? newEvent.scannerCoordinatorId : editingEvent.scannerCoordinatorId}
+              onChange={(e) => {
+                const v = parseInt(e.target.value) || 0;
+                step === 'create' ? setNewEvent({ ...newEvent, scannerCoordinatorId: v }) : setEditingEvent({ ...editingEvent, scannerCoordinatorId: v });
+              }}>
+              <option value={0}>По умолчанию (создатель)</option>
+              {coordinatorsList.map(c => (
+                <option key={c.id} value={c.id}>{c.fullName} (@{c.telegramUsername})</option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {step === 'create' ? (
+                <>
+                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setNewEvent({ ...newEvent, status: 'DRAFT' }); createEvent(); }} disabled={submitting}>
+                    {submitting ? '...' : 'Сохранить черновик'}
+                  </button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { setNewEvent({ ...newEvent, status: 'PUBLISHED' }); createEvent(); }} disabled={submitting || !(newEvent.name && newEvent.eventDate)}>
+                    {submitting ? '...' : 'Опубликовать'}
+                  </button>
+                </>
+              ) : (
+                <button className="btn btn-primary" disabled={submitting || !(editingEvent.name && editingEvent.eventDate)}
+                  onClick={updateEvent}>
+                  {submitting ? '...' : 'Сохранить'}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -299,8 +376,16 @@ export default function EventsPage({ coordinator }: Props) {
           <>
             <div className="card" style={{ marginBottom: 14, animation: 'fadeIn 0.25s ease both' }}>
               <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 4 }}>{selectedEvent.name}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{fmtDate(selectedEvent.eventDate)}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{fmtDate(selectedEvent.eventDate)} {(selectedEvent as any).location ? `· ${(selectedEvent as any).location}` : ''}</div>
               {selectedEvent.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{selectedEvent.description}</div>}
+              {(selectedEvent as any).pointsForAttendance ? <div style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, fontWeight: 600 }}>+{(selectedEvent as any).pointsForAttendance} баллов за посещение</div> : null}
+              {(selectedEvent as any).maxParticipants ? <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Лимит: {selectedEvent.participants.length}/{(selectedEvent as any).maxParticipants}</div> : null}
+              {(selectedEvent as any).scannerCoordinator && (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Отмечающий: <span style={{ fontWeight: 600 }}>{(selectedEvent as any).scannerCoordinator.fullName}</span>
+                  {((selectedEvent as any).scannerCoordinator as any).telegramUsername && <span style={{ color: 'var(--accent)' }}> @{(selectedEvent as any).scannerCoordinator.telegramUsername}</span>}
+                </div>
+              )}
             </div>
 
             <div className="section-label" style={{ marginBottom: 10 }}>

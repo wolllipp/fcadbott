@@ -4,39 +4,68 @@ import { generatePetitionDoc } from '../services/petitionDocGenerator';
 
 const router = Router();
 
-
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { studentId, type, eventIds } = req.body;
-    if (!studentId || !type || !eventIds?.length) {
-      return res.status(400).json({ error: 'studentId, type и eventIds обязательны' });
+    const { studentId, type } = req.body;
+    if (!studentId || !type) {
+      return res.status(400).json({ error: 'studentId and type required' });
     }
 
-    const events = await prisma.eventParticipant.findMany({
-      where: { id: { in: eventIds }, attended: true },
-      include: { event: { select: { name: true, eventDate: true } } },
+    const student = await prisma.student.findUnique({ where: { id: studentId } });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const activeTransactions = await prisma.pointTransaction.findMany({
+      where: { studentId, status: 'ACTIVE' },
+      include: { event: { select: { name: true } } },
+      orderBy: { createdAt: 'asc' },
     });
 
-    if (events.length === 0) {
-      return res.status(400).json({ error: 'Ни одно из выбранных мероприятий не отмечено как посещённое' });
+    const balance = activeTransactions.reduce((sum, t) => sum + t.points, 0);
+    if (balance < 100) {
+      return res.status(400).json({ error: `Недостаточно баллов: ${balance}/100` });
+    }
+
+    const existingPending = await prisma.petition.findFirst({
+      where: { studentId, status: { in: ['PENDING', 'DRAFT'] } },
+    });
+    if (existingPending) {
+      return res.status(409).json({ error: 'У вас уже есть активное ходатайство' });
     }
 
     const petition = await prisma.petition.create({
       data: {
         studentId,
         type,
-        events: {
-          create: events.map((ep) => ({
-            eventId: ep.eventId,
-            eventName: ep.event.name,
-            eventDate: ep.event.eventDate,
+        status: 'PENDING',
+        balanceAtSubmit: balance,
+        totalPoints: balance,
+        snapshots: {
+          create: activeTransactions.map(t => ({
+            points: t.points,
+            type: t.type,
+            reason: t.reason,
+            eventName: t.event?.name || null,
+            createdAt: t.createdAt,
           })),
         },
       },
-      include: { events: true, student: true },
+      include: {
+        student: true,
+        events: true,
+        snapshots: true,
+      },
     });
 
-    // Notify chairman/dean
+    await prisma.pointTransaction.create({
+      data: {
+        studentId,
+        points: -100,
+        type: 'MANUAL_ADJUSTMENT',
+        reason: 'Списание за подачу ходатайства',
+        status: 'ACTIVE',
+      },
+    });
+
     try {
       const { sendPetitionPending } = require('../services/bot');
       await sendPetitionPending(petition);
@@ -53,11 +82,16 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { studentId, role } = req.query;
     const isAdmin = role && !['COORDINATOR'].includes(role as string);
-    const where = isAdmin ? {} : { studentId: Number(studentId) };
+    const where: any = isAdmin ? {} : { studentId: Number(studentId) };
 
     const petitions = await prisma.petition.findMany({
       where,
-      include: { events: true, student: true },
+      include: {
+        events: true,
+        student: { select: { id: true, fullName: true, groupNumber: true, studentCardNumber: true, chatId: true } },
+        snapshots: { orderBy: { createdAt: 'asc' } },
+        reviewer: { select: { fullName: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -71,15 +105,23 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/:id/approve', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { role } = req.body;
-    if (role !== 'CHAIRMAN' && role !== 'DEAN') {
-      return res.status(403).json({ error: 'Только председатель и зам.председателя могут подтверждать ходатайства' });
+    const { role, coordinatorId } = req.body;
+    if (role !== 'CHAIRMAN' && role !== 'DEAN' && role !== 'DEPUTY') {
+      return res.status(403).json({ error: 'Нет прав на подтверждение ходатайств' });
     }
 
     const petition = await prisma.petition.update({
       where: { id },
-      data: { status: 'APPROVED', approvedAt: new Date() },
-      include: { events: true, student: true },
+      data: {
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        reviewerId: coordinatorId || null,
+      },
+      include: {
+        events: true,
+        student: true,
+        snapshots: true,
+      },
     });
 
     try {
@@ -97,14 +139,18 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
 router.post('/:id/reject', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const { role } = req.body;
-    if (role !== 'CHAIRMAN' && role !== 'DEAN') {
-      return res.status(403).json({ error: 'Только председатель и зам.председателя могут отклонять ходатайства' });
+    const { role, coordinatorId, reviewComment } = req.body;
+    if (role !== 'CHAIRMAN' && role !== 'DEAN' && role !== 'DEPUTY') {
+      return res.status(403).json({ error: 'Нет прав на отклонение ходатайств' });
     }
 
     const petition = await prisma.petition.update({
       where: { id },
-      data: { status: 'REJECTED' },
+      data: {
+        status: 'REJECTED',
+        reviewerId: coordinatorId || null,
+        reviewComment: reviewComment || null,
+      },
       include: { events: true, student: true },
     });
 
@@ -120,7 +166,7 @@ router.get('/:id/download', async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const petition = await prisma.petition.findUnique({
       where: { id },
-      include: { events: true, student: true },
+      include: { events: true, student: true, snapshots: true },
     });
     if (!petition) return res.status(404).json({ error: 'Not found' });
     if (petition.status !== 'APPROVED') return res.status(400).json({ error: 'Ходатайство ещё не одобрено' });

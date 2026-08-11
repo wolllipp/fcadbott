@@ -33,6 +33,51 @@ enum ExemptionStatus {
   REJECTED
 }
 
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+enum EventAudience {
+  SS
+  FKP
+  ALL
+}
+
+enum ParticipationType {
+  VISITOR
+  PARTICIPANT
+  ORGANIZER
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  AWAITING_MARK
+  ATTENDANCE_CONFIRMED
+}
+
+enum PointType {
+  ATTENDANCE
+  ORGANIZATION
+  MANUAL_ADJUSTMENT
+}
+
+enum PointStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum CheckType {
+  CHECK_IN
+  CHECK_OUT
+}
+
 model Coordinator {
   id               Int      @id @default(autoincrement())
   fullName         String
@@ -40,11 +85,16 @@ model Coordinator {
   role             Role
   sector           String?
   chatId           String?
+  photoUrl         String?
 
   managedSector    Sector?
   exemptions       Exemption[]
-  events           Event[]
+  events           Event[]   @relation("EventCreator")
+  scannedEvents    Event[]   @relation("ScannerCoordinator")
   bonusSubmissions BonusSubmission[]
+  pointTransactions PointTransaction[]
+  approvedApplications EventApplication[]
+  reviewedPetitions Petition[]
 
   createdAt DateTime @default(now())
 }
@@ -82,10 +132,13 @@ model Student {
   chatId            String?
   sectors           String[]
   budgetStatus      BudgetStatus @default(BUDGET)
+  photoUrl          String?
 
-  exemptionStudents ExemptionStudent[]
-  bonusEntries      BonusEntry[]
-  petitions         Petition[]
+  exemptionStudents  ExemptionStudent[]
+  bonusEntries       BonusEntry[]
+  petitions          Petition[]
+  eventApplications  EventApplication[]
+  pointTransactions  PointTransaction[]
 }
 
 model Exemption {
@@ -121,12 +174,28 @@ model Event {
   eventDate   DateTime
   description String?
   createdBy   Int
+  scannerCoordinatorId Int?
   attendanceFinalized Boolean @default(false)
 
-  creator      Coordinator        @relation(fields: [createdBy], references: [id])
+  creator      Coordinator        @relation("EventCreator", fields: [createdBy], references: [id])
+  scannerCoordinator Coordinator? @relation("ScannerCoordinator", fields: [scannerCoordinatorId], references: [id])
   participants EventParticipant[]
 
   createdAt DateTime @default(now())
+
+  location           String?
+  endDate            DateTime?
+  registrationDeadline DateTime?
+  pointsForAttendance Int     @default(0)
+  maxParticipants    Int?
+  status             EventStatus @default(DRAFT)
+  audience           EventAudience @default(ALL)
+  allowedGroups      String[]
+  facultyOnly        Boolean @default(false)
+  requireApproval    Boolean @default(false)
+
+  applications       EventApplication[]
+  pointTransactions  PointTransaction[]
 }
 
 model EventParticipant {
@@ -137,6 +206,69 @@ model EventParticipant {
   fullName    String
   groupNumber String
   attended    Boolean @default(false)
+}
+
+model EventApplication {
+  id                Int      @id @default(autoincrement())
+  eventId           Int
+  event             Event    @relation(fields: [eventId], references: [id])
+  studentId         Int
+  student           Student  @relation(fields: [studentId], references: [id])
+
+  participationType ParticipationType @default(VISITOR)
+  status            ApplicationStatus @default(PENDING)
+
+  studentComment    String?
+  coordinatorComment String?
+
+  approvedById      Int?
+  approver          Coordinator? @relation(fields: [approvedById], references: [id])
+  approvedAt        DateTime?
+  cancelledAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  qrToken           String?   @unique
+  checkedIn         Boolean   @default(false)
+  checkedOut        Boolean   @default(false)
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  checkedInById     Int?
+  checkedOutById    Int?
+
+  attendances       Attendance[]
+
+  @@unique([eventId, studentId])
+}
+
+model Attendance {
+  id              Int      @id @default(autoincrement())
+  applicationId   Int
+  application     EventApplication @relation(fields: [applicationId], references: [id])
+
+  type            CheckType
+  scannedById     Int?
+  scannedAt       DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+}
+
+model PointTransaction {
+  id          Int       @id @default(autoincrement())
+  studentId   Int
+  student     Student   @relation(fields: [studentId], references: [id])
+
+  points      Int
+  type        PointType
+  eventId     Int?
+  event       Event?    @relation(fields: [eventId], references: [id])
+  reason      String
+
+  authorId    Int?
+  author      Coordinator? @relation(fields: [authorId], references: [id])
+
+  status      PointStatus @default(ACTIVE)
+
+  createdAt   DateTime @default(now())
 }
 
 model BonusSubmission {
@@ -168,7 +300,7 @@ model BonusEntry {
   reason            String   @default("Организация мероприятий на факультете и в университете и участие в них")
   deferredToMonth   Int?
   deferredToYear    Int?
-  budgetStudentName String?  // For paid students: the budget student whose line they go under
+  budgetStudentName String?
   budgetStudentGroup String?
   budgetStudentCard String?
 }
@@ -180,6 +312,7 @@ enum PetitionType {
 }
 
 enum PetitionStatus {
+  DRAFT
   PENDING
   APPROVED
   REJECTED
@@ -195,6 +328,14 @@ model Petition {
   approvedAt DateTime?
 
   events PetitionEvent[]
+
+  balanceAtSubmit   Int     @default(0)
+  totalPoints       Int     @default(0)
+  reviewComment     String?
+  reviewerId        Int?
+  reviewer          Coordinator? @relation(fields: [reviewerId], references: [id])
+
+  snapshots PetitionPointSnapshot[]
 }
 
 model PetitionEvent {
@@ -205,4 +346,16 @@ model PetitionEvent {
   eventId   Int
   eventName String
   eventDate DateTime
+}
+
+model PetitionPointSnapshot {
+  id         Int      @id @default(autoincrement())
+  petitionId Int
+  petition   Petition @relation(fields: [petitionId], references: [id])
+
+  points     Int
+  type       String
+  reason     String
+  eventName  String?
+  createdAt  DateTime
 }

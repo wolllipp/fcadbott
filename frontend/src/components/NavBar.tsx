@@ -29,10 +29,13 @@ function getTabList(coordinator: Coordinator): { id: Tab; icon: string; label: s
     { id: 'exemptions', icon: '◎', label: 'Освобождения' },
     { id: 'bonuses', icon: '◇', label: 'Премии' },
     { id: 'events', icon: '☰', label: 'Мероприятия' },
+    { id: 'applications', icon: '▣', label: 'Заявки' },
+    { id: 'scanner', icon: '⊙', label: 'Сканер' },
   ];
 
   if (canSeePetitions) {
     tabs.push({ id: 'petitions', icon: '✎', label: 'Ходатайства' });
+    tabs.push({ id: 'stats', icon: '◎', label: 'Статистика' });
   }
 
   return tabs;

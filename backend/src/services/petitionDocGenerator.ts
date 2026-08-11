@@ -57,6 +57,12 @@ const PETITION_TYPE_TEXT: Record<string, string> = {
   SPECIALIZATION: 'профилизации',
 };
 
+const POINT_TYPE_TEXT: Record<string, string> = {
+  ATTENDANCE: 'посещение',
+  ORGANIZATION: 'организация',
+  MANUAL_ADJUSTMENT: 'корректировка',
+};
+
 export async function generatePetitionDoc(petition: any): Promise<Buffer> {
   const student = petition.student;
   const typeText = PETITION_TYPE_TEXT[petition.type] || petition.type;
@@ -66,11 +72,25 @@ export async function generatePetitionDoc(petition: any): Promise<Buffer> {
 
   const budgetLabel = student.budgetStatus === 'PAID' ? 'платной' : 'бюджетной';
 
-  const eventParagraphs = petition.events.map((e: any, i: number) => {
-    const d = new Date(e.eventDate);
+  const snapshotsByType = petition.snapshots.reduce((acc: any[], s: any) => {
+    const existing = acc.find(a => a.eventName === s.eventName && a.type === s.type);
+    if (existing) {
+      existing.points += s.points;
+    } else {
+      acc.push({ ...s });
+    }
+    return acc;
+  }, []);
+
+  const snapshotParagraphs = snapshotsByType.map((s: any, i: number) => {
+    const d = new Date(s.createdAt);
     const ds = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
-    return p([txt(`${i + 1}) ${e.eventName} (${ds});`)], AlignmentType.BOTH, 709);
+    const typeLabel = s.type === 'ATTENDANCE' ? 'Посещение' : s.type === 'ORGANIZATION' ? 'Организация' : s.reason;
+    const eventPart = s.eventName ? ` ${s.eventName}` : '';
+    return p([txt(`${i + 1}. ${typeLabel}${eventPart} ${ds}`)], AlignmentType.BOTH, 709);
   });
+
+  const totalPoints = petition.totalPoints || petition.balanceAtSubmit || 0;
 
   const doc = new Document({
     styles: { default: { document: { run: { size: FS, font: FONT } } } },
@@ -106,7 +126,8 @@ export async function generatePetitionDoc(petition: any): Promise<Buffer> {
         p([
           txt(`${student.fullName} активно участвует в жизни факультета, принимал участие в мероприятиях, таких как:`),
         ], AlignmentType.BOTH, 709),
-        ...eventParagraphs,
+        ...snapshotParagraphs,
+        p([txt('')], AlignmentType.BOTH, 709),
         p([
           txt(`Учитывая вышеизложенное, Студенческий совет ходатайствует о ${typeText} ${student.fullName} согласно поданному заявлению.`),
         ], AlignmentType.BOTH, 709),

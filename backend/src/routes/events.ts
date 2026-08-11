@@ -8,7 +8,11 @@ const router = Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     const events = await prisma.event.findMany({
-      include: { participants: true, creator: { select: { id: true, fullName: true } } },
+      include: {
+        participants: true,
+        creator: { select: { id: true, fullName: true } },
+        scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+      },
       orderBy: { eventDate: 'desc' },
     });
     res.json(events);
@@ -20,19 +24,35 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId } = req.body;
+    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId } = req.body;
     if (!name || !eventDate) return res.status(400).json({ error: 'name and eventDate required' });
     if (!coordinatorId) return res.status(400).json({ error: 'coordinatorId required' });
 
     const event = await prisma.event.create({
-      data: { name, eventDate: new Date(eventDate), description, createdBy: coordinatorId },
-      include: { participants: true, creator: { select: { id: true, fullName: true } } },
+      data: {
+        name,
+        eventDate: new Date(eventDate),
+        description,
+        createdBy: coordinatorId,
+        scannerCoordinatorId: scannerCoordinatorId || coordinatorId,
+        location: location || null,
+        status: status || 'DRAFT',
+        pointsForAttendance: pointsForAttendance || 0,
+        maxParticipants: maxParticipants || null,
+        audience: audience || 'ALL',
+        facultyOnly: facultyOnly || false,
+        requireApproval: requireApproval || false,
+      },
+      include: {
+        participants: true,
+        creator: { select: { id: true, fullName: true } },
+        scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+      },
     });
 
-    try {
-      // const { sendNewEvent } = require('../services/bot');
-      await sendNewEvent(event);
-    } catch (_) {}
+    if (event.status === 'PUBLISHED') {
+      try { await sendNewEvent(event); } catch (_) {}
+    }
 
     res.json(event);
   } catch (err) {
@@ -43,7 +63,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, role } = req.body;
+    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId } = req.body;
     const id = Number(req.params.id);
     const isAdmin = role && !['COORDINATOR'].includes(role as string);
 
@@ -58,8 +78,20 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(name !== undefined && { name }),
         ...(eventDate !== undefined && { eventDate: new Date(eventDate) }),
         ...(description !== undefined && { description }),
+        ...(location !== undefined && { location }),
+        ...(status !== undefined && { status }),
+        ...(pointsForAttendance !== undefined && { pointsForAttendance }),
+        ...(maxParticipants !== undefined && { maxParticipants: maxParticipants || null }),
+        ...(audience !== undefined && { audience }),
+        ...(facultyOnly !== undefined && { facultyOnly }),
+        ...(requireApproval !== undefined && { requireApproval }),
+        ...(scannerCoordinatorId !== undefined && { scannerCoordinatorId: scannerCoordinatorId || null }),
       },
-      include: { participants: true, creator: { select: { id: true, fullName: true } } },
+      include: {
+        participants: true,
+        creator: { select: { id: true, fullName: true } },
+        scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+      },
     });
     res.json(event);
   } catch (err) {
@@ -189,6 +221,7 @@ router.get('/by-student', async (req: Request, res: Response) => {
           where: { fullName: fullName as string },
         },
         creator: { select: { id: true, fullName: true } },
+        scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
       },
       orderBy: { eventDate: 'desc' },
     });
@@ -238,6 +271,19 @@ router.post('/:id/generate-exemption', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/coordinators', async (_req: Request, res: Response) => {
+  try {
+    const coordinators = await prisma.coordinator.findMany({
+      select: { id: true, fullName: true, telegramUsername: true, role: true },
+      orderBy: { fullName: 'asc' },
+    });
+    res.json(coordinators);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.post('/:id/finalize-attendance', async (req: Request, res: Response) => {
   try {
     const eventId = Number(req.params.id);
@@ -253,7 +299,11 @@ router.post('/:id/finalize-attendance', async (req: Request, res: Response) => {
     const updated = await prisma.event.update({
       where: { id: eventId },
       data: { attendanceFinalized: true },
-      include: { participants: true, creator: { select: { id: true, fullName: true } } },
+      include: {
+        participants: true,
+        creator: { select: { id: true, fullName: true } },
+        scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+      },
     });
     res.json(updated);
   } catch (err) {

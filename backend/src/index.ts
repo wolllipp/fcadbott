@@ -9,6 +9,10 @@ import { sectorsRouter } from './routes/sectors';
 import { eventsRouter } from './routes/events';
 import { councilRouter } from './routes/council';
 import { petitionsRouter } from './routes/petitions';
+import { applicationsRouter } from './routes/applications';
+import { pointsRouter } from './routes/points';
+import { adminRouter } from './routes/admin';
+import { attendanceRouter } from './routes/attendance';
 import { initBot, getBot, sendEventReminders } from './services/bot';
 
 dotenv.config();
@@ -16,7 +20,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: 'https://fcadbot.site' }));
+app.use(cors({ origin: ['https://fcadbot.site', 'https://delete-unsnap-banker.ngrok-free.dev', 'http://localhost:5173'], credentials: true }));
 app.use(express.json());
 app.use(express.static('../frontend/dist'));
 
@@ -28,6 +32,10 @@ app.use('/api/sectors', sectorsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/council', councilRouter);
 app.use('/api/petitions', petitionsRouter);
+app.use('/api/applications', applicationsRouter);
+app.use('/api/points', pointsRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/attendance', attendanceRouter);
 
 app.post('/api/bot-webhook', (req, res) => {
   const b = getBot();

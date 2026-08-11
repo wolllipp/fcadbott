@@ -166,7 +166,7 @@ export async function sendPetitionPending(petition: any) {
     SPECIALIZATION: 'на профилизацию',
   };
   const message =
-    `📋 *Новое ходатайство*\n━━━━━━━━━━━━━━━━━━━━\n👤 Студент: *${petition.student.fullName}*\n📌 Тип: *${typeLabel[petition.type] || petition.type}*\n🎭 Мероприятий: *${petition.events.length}*\n\n⏳ Откройте приложение для подтверждения или отклонения`;
+    `📋 *Новое ходатайство*\n━━━━━━━━━━━━━━━━━━━━\n👤 Студент: *${petition.student.fullName}*\n📌 Тип: *${typeLabel[petition.type] || petition.type}*\n💰 Баллов: *${petition.balanceAtSubmit}*\n\n⏳ Откройте приложение для подтверждения или отклонения`;
 
   try {
     const targets = await prisma.coordinator.findMany({
@@ -184,21 +184,31 @@ export async function sendPetitionPending(petition: any) {
 }
 
 export async function sendNewEvent(event: any) {
-
   if (!bot) return;
   const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const audienceLabel: Record<string, string> = { SS: 'студсовета', FKP: 'ФКП', ALL: 'всех студентов' };
   const message =
-    `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.description ? `📝 ${event.description}\n` : ''}\n✍️ Записаться можно через приложение студсовета: @fcadbot\\_bot`;
-  
-  // Notify all students who have chatId
-  try {
-    const students = await prisma.student.findMany({ where: { chatId: { not: null } } });
-    const sent = new Set<string>();
+    `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}${event.description ? `📝 ${event.description}\n` : ''}👥 Для: *${audienceLabel[event.audience] || 'всех'}*\n\n✍️ Записаться через приложение студсовета: @fcadbot\\_bot`;
 
+  try {
+    let students;
+    if (event.audience === 'SS') {
+      students = await prisma.student.findMany({
+        where: { chatId: { not: null }, sectors: { isEmpty: false } },
+      });
+    } else if (event.audience === 'FKP') {
+      students = await prisma.student.findMany({
+        where: { chatId: { not: null }, sectors: { hasSome: ['ФКП', 'фкп'] } },
+      });
+    } else {
+      students = await prisma.student.findMany({ where: { chatId: { not: null } } });
+    }
+
+    const sent = new Set<string>();
     for (const s of students) {
       if (s.chatId && !sent.has(s.chatId)) {
         sent.add(s.chatId);
-        try { await bot.sendMessage(s.chatId, message, { parse_mode: 'Markdown' }); console.log('[sendNewEvent] Sent to', s.chatId); } catch (e) { console.log('[sendNewEvent] FAILED for', s.chatId, e.message); }
+        try { await bot.sendMessage(s.chatId, message, { parse_mode: 'Markdown' }); } catch (_) {}
       }
     }
   } catch (e) { console.error(e); }
@@ -247,23 +257,17 @@ export async function checkMilestone(studentId: number) {
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student || !student.chatId) return;
 
-  const attendedCount = await prisma.eventParticipant.count({
-    where: {
-      fullName: student.fullName,
-      groupNumber: student.groupNumber,
-      attended: true,
-      event: { attendanceFinalized: true },
-    },
+  const activeTransactions = await prisma.pointTransaction.findMany({
+    where: { studentId, status: 'ACTIVE' },
   });
+  const balance = activeTransactions.reduce((sum, t) => sum + t.points, 0);
 
-  if (attendedCount > 0 && attendedCount % 5 === 0) {
-    const existingPetitions = await prisma.petition.count({
-      where: { studentId, status: { not: 'REJECTED' } },
+  if (balance >= 100) {
+    const hasActive = await prisma.petition.findFirst({
+      where: { studentId, status: { in: ['PENDING', 'DRAFT'] } },
     });
-    const maxSlots = Math.floor(attendedCount / 5);
-    const availableSlots = maxSlots - existingPetitions;
-    if (availableSlots > 0) {
-      const message = '🎉 *Поздравляем! Вы посетили ' + attendedCount + ' мероприятий!*\n━━━━━━━━━━━━━━━━━━━━\nВы можете подать ходатайство (доступно: ' + availableSlots + ' шт.).\n\nОткройте приложение студсовета: @fcadbot\\_bot';
+    if (!hasActive) {
+      const message = '🎉 *Поздравляем! Вы набрали ' + balance + ' баллов!*\n━━━━━━━━━━━━━━━━━━━━\nВы можете подать ходатайство.\n\nОткройте приложение студсовета: @fcadbot\\_bot';
       try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
     }
   }

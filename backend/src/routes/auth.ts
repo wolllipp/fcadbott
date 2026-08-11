@@ -40,13 +40,24 @@ router.post('/verify', async (req: Request, res: Response) => {
     // In development, allow test mode
     if (process.env.NODE_ENV === 'development' && req.body.testUsername) {
       const username = req.body.testUsername.replace('@', '');
+      
+      // First try coordinator
       const coordinator = await prisma.coordinator.findUnique({
         where: { telegramUsername: username },
       });
-      if (!coordinator) {
-        return res.status(403).json({ error: 'Access denied' });
+      if (coordinator) {
+        return res.json({ coordinator });
       }
-      return res.json({ coordinator });
+      
+      // Then try student
+      const student = await prisma.student.findFirst({
+        where: { telegramUsername: username },
+      });
+      if (student) {
+        return res.json({ student });
+      }
+      
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     if (!initData) {
@@ -90,9 +101,9 @@ router.post('/verify', async (req: Request, res: Response) => {
 
 router.post('/student-register', async (req: Request, res: Response) => {
   try {
-    const { fullName, studentCardNumber, telegramUsername, initData } = req.body;
-    if (!fullName || !studentCardNumber || !telegramUsername) {
-      return res.status(400).json({ error: 'fullName, studentCardNumber и telegramUsername обязательны' });
+    const { fullName, studentCardNumber, telegramUsername, groupNumber, budgetStatus, initData } = req.body;
+    if (!fullName || !studentCardNumber || !telegramUsername || !groupNumber) {
+      return res.status(400).json({ error: 'fullName, studentCardNumber, groupNumber и telegramUsername обязательны' });
     }
 
     const student = await prisma.student.findFirst({
@@ -107,7 +118,6 @@ router.post('/student-register', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'Этот студент уже привязан к другому Telegram аккаунту' });
     }
 
-    // Extract chatId from initData
     let chatId: string | undefined;
     if (initData) {
       const data = verifyTelegramWebAppData(initData);
@@ -121,6 +131,8 @@ router.post('/student-register', async (req: Request, res: Response) => {
       where: { id: student.id },
       data: {
         telegramUsername: telegramUsername.replace('@', ''),
+        groupNumber: groupNumber || student.groupNumber,
+        budgetStatus: budgetStatus || student.budgetStatus,
         ...(chatId && { chatId }),
       },
     });
@@ -165,6 +177,30 @@ router.post('/student-login', async (req: Request, res: Response) => {
     }
 
     res.json({ student: { ...student, chatId: chatId || student.chatId } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.put('/profile', async (req: Request, res: Response) => {
+  try {
+    const { userId, role, photoUrl } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+
+    if (role === 'student') {
+      const student = await prisma.student.update({
+        where: { id: userId },
+        data: { photoUrl: photoUrl || null },
+      });
+      return res.json({ student });
+    }
+
+    const coordinator = await prisma.coordinator.update({
+      where: { id: userId },
+      data: { photoUrl: photoUrl || null },
+    });
+    res.json({ coordinator });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

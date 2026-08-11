@@ -729,7 +729,7 @@ export default function BonusesPage({ coordinator }: Props) {
                 color: showEditPicker ? 'var(--accent)' : 'var(--text-secondary)',
                 fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}>
-                {showEditPicker ? '✓ Выбрать из списка' : '📋 Из списка'}
+                {showEditPicker ? '✓ Выбрать из списка' : 'Из списка'}
               </button>
               <button onClick={() => setShowEditPicker(false)} style={{
                 flex: 1, padding: '8px 0', borderRadius: 10, border: '1.5px solid',

@@ -10,9 +10,14 @@ import CouncilPage from './pages/CouncilPage';
 import StudentLoginPage from './pages/StudentLoginPage';
 import StudentDashboard from './pages/StudentDashboard';
 import PetitionsAdminPage from './pages/PetitionsAdminPage';
+import AdminStatsPage from './pages/AdminStatsPage';
+import ApplicationsPage from './pages/ApplicationsPage';
+import ScannerPage from './pages/ScannerPage';
 import NavBar from './components/NavBar';
 import LoadingScreen from './components/LoadingScreen';
 import AccessDenied from './components/AccessDenied';
+import { MascotToastProvider } from './components/MascotToast';
+import MascotChat from './components/MascotChat';
 
 declare global {
   interface Window {
@@ -20,7 +25,7 @@ declare global {
   }
 }
 
-export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'petitions';
+export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'petitions' | 'stats' | 'applications' | 'scanner';
 
 export interface Coordinator {
   id: number;
@@ -45,7 +50,11 @@ export default function App() {
   const isAdmin = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY' || coordinator?.role === 'DEAN' || coordinator?.role === 'SECRETARY';
 
   useEffect(() => {
-    if (!isInTelegram()) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isProd = window.location.hostname === 'fcadbot.site';
+    const testUsername = isProd ? '' : (urlParams.get('user') || '');
+
+    if (!isInTelegram() && !testUsername) {
       setLoading(false);
       return;
     }
@@ -61,11 +70,15 @@ export default function App() {
     async function auth() {
       try {
         const initData = tg?.initData || '';
-        const urlParams = new URLSearchParams(window.location.search);
-        const testUsername = urlParams.get('user') || '';
+        const testUsernameSafe = isProd ? '' : (urlParams.get('user') || '');
 
-        const res = await api.auth.verify(initData, testUsername || undefined);
-        setCoordinator(res.coordinator);
+        const res = await api.auth.verify(initData, testUsernameSafe || undefined);
+        if (res.coordinator) {
+          setCoordinator(res.coordinator);
+        } else if (res.student) {
+          setStudent(res.student);
+          localStorage.setItem('student', JSON.stringify(res.student));
+        }
       } catch {
         const saved = localStorage.getItem('student');
         if (saved) {
@@ -121,13 +134,20 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
 
-  // Not in Telegram — show portfolio
-  if (!isInTelegram()) return <PortfolioPage />;
+  const testMode = new URLSearchParams(window.location.search).get('user');
+  const isProduction = window.location.hostname === 'fcadbot.site';
+  const safeTestMode = isProduction ? null : testMode;
+
+  // Not in Telegram and no test mode — show portfolio
+  if (!isInTelegram() && !safeTestMode) return <PortfolioPage />;
 
   // Student mode
   if (!coordinator && student) {
     return (
-      <StudentDashboard student={student} onLogout={handleStudentLogout} />
+      <MascotToastProvider>
+        <StudentDashboard student={student} onLogout={handleStudentLogout} />
+        <MascotChat />
+      </MascotToastProvider>
     );
   }
 
@@ -146,6 +166,9 @@ export default function App() {
       {tab === 'events' && <EventsPage coordinator={coordinator} />}
       {tab === 'council' && <CouncilPage coordinator={coordinator} />}
       {tab === 'petitions' && <PetitionsAdminPage coordinator={coordinator} />}
+      {tab === 'stats' && <AdminStatsPage coordinator={coordinator} />}
+      {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}
+      {tab === 'scanner' && <ScannerPage coordinator={coordinator} />}
       <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} />
     </div>
   );

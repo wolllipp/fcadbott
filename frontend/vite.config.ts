@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    allowedHosts: ['delete-unsnap-banker.ngrok-free.dev'],
+    allowedHosts: true,
     proxy: {
       '/api': 'http://localhost:3001',
     },
