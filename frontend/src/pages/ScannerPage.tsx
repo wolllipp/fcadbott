@@ -105,10 +105,12 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
       tg.showScanQrPopup(
         { text: 'Поднесите QR-код к камере' },
         (text: string | null) => {
+          try { tg.closeScanQrPopup?.(); } catch (_) {}
           setCameraActive(false);
           setNativeScan(false);
           if (text) {
             setScanInput(text);
+            setTimeout(() => { handleScan(); }, 0);
           }
         }
       );

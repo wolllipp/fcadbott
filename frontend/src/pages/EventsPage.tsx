@@ -382,12 +382,9 @@ export default function EventsPage({ coordinator }: Props) {
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               {step === 'create' ? (
                 <>
-                   <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => createEvent('DRAFT')} disabled={submitting}>
-                    {submitting ? '...' : 'Сохранить черновик'}
-                  </button>
                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => createEvent('PUBLISHED')} disabled={submitting || !(newEvent.name && newEvent.eventDate)}>
-                    {submitting ? '...' : 'Опубликовать'}
-                  </button>
+                     {submitting ? '...' : 'Сохранить и опубликовать'}
+                   </button>
                 </>
               ) : (
                 <button className="btn btn-primary" disabled={submitting || !(editingEvent.name && editingEvent.eventDate)}

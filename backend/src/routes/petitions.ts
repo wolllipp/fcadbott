@@ -174,6 +174,17 @@ router.get('/:id/download', async (req: Request, res: Response) => {
     const docBuffer = await generatePetitionDoc(petition);
     const typeName = petition.type.toLowerCase();
     const filename = `Ходатайство_${typeName}_${petition.id}.docx`;
+    try {
+      const { getBot } = require('../services/bot');
+      if (getBot() && petition.student.chatId) {
+        await getBot().sendDocument(petition.student.chatId, docBuffer, {
+          caption: `📄 Ваше ходатайство готово: ${filename}`,
+        }, {
+          filename,
+          contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        });
+      }
+    } catch (e) { console.error('Petition Telegram delivery failed:', e); }
     const encoded = encodeURIComponent(filename).replace(/%20/g, '_');
     res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.set('Content-Disposition', `attachment; filename*=UTF-8''${encoded}`);

@@ -308,6 +308,12 @@ export async function sendPetitionApproved(petition: any) {
   try { await bot.sendMessage(petition.student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
+export async function sendPetitionDownloaded(petition: any) {
+  if (!bot || !petition.student?.chatId) return;
+  const message = `📥 *Ходатайство скачано*\n━━━━━━━━━━━━━━━━━━━━\nСтудент: *${petition.student.fullName}*\nТип: *${petition.type}*\n\nДокумент был скачан из приложения.`;
+  try { await bot.sendMessage(petition.student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
+}
+
 export async function sendAttendanceMarked(student: any, eventName: string, eventDate: Date) {
   if (!bot) return;
   if (!student.chatId) return;

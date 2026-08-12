@@ -34,6 +34,7 @@ function getTabList(coordinator: Coordinator): { id: Tab; icon: string; label: s
   ];
 
   if (canSeePetitions) {
+    tabs.push({ id: 'students', icon: '♙', label: 'Студенты' });
     tabs.push({ id: 'petitions', icon: '✎', label: 'Ходатайства' });
     tabs.push({ id: 'stats', icon: '◎', label: 'Статистика' });
   }

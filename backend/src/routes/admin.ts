@@ -3,8 +3,26 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+async function getStudentScope(req: Request): Promise<number[] | null> {
+  const coordinatorId = Number(req.query.coordinatorId);
+  if (!coordinatorId) return null;
+  const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId }, select: { role: true, sector: true } });
+  if (!coordinator || coordinator.role !== 'COORDINATOR' || !coordinator.sector) return null;
+  const rawSector = Object.entries({
+    'Научка': 'Научное', 'Инструментал': 'Инструментальное', 'Танцевальный': 'Танцевальное',
+    'Театрал': 'Театральное', 'Учебный': 'Учебное', 'Вокал': 'Вокальное',
+    'Культмассовый': 'Культурно-массовое', 'Декор': 'Декоративное', 'Спорт': 'Спортивное',
+    'Проф': 'Профориентационное', 'Информ': 'Информационное',
+  }).find(([, value]) => value === coordinator.sector)?.[0] || coordinator.sector;
+  const students = await prisma.student.findMany({ where: { sectors: { has: rawSector } }, select: { id: true } });
+  return students.map((s) => s.id);
+}
+
 router.get('/stats', async (req: Request, res: Response) => {
   try {
+    const scopedStudentIds = await getStudentScope(req);
+    const studentWhere = scopedStudentIds ? { id: { in: scopedStudentIds } } : undefined;
+    const studentIdWhere = scopedStudentIds ? { studentId: { in: scopedStudentIds } } : undefined;
     const [
       totalStudents,
       totalCoordinators,
@@ -18,21 +36,21 @@ router.get('/stats', async (req: Request, res: Response) => {
       petitionsPending,
       exemptionsPending,
     ] = await Promise.all([
-      prisma.student.count(),
+      prisma.student.count({ where: studentWhere }),
       prisma.coordinator.count(),
       prisma.event.count(),
       prisma.event.count({ where: { status: { not: 'CANCELLED' } } }),
-      prisma.eventApplication.count(),
-      prisma.eventApplication.count({ where: { status: 'PENDING' } }),
-      prisma.eventApplication.count({ where: { status: 'APPROVED' } }),
-      prisma.pointTransaction.aggregate({ _sum: { points: true }, where: { status: 'ACTIVE' } }),
+      prisma.eventApplication.count({ where: studentIdWhere }),
+      prisma.eventApplication.count({ where: { ...studentIdWhere, status: 'PENDING' } }),
+      prisma.eventApplication.count({ where: { ...studentIdWhere, status: 'APPROVED' } }),
+      prisma.pointTransaction.aggregate({ _sum: { points: true }, where: { ...studentIdWhere, status: 'ACTIVE' } }),
       prisma.pointTransaction.findMany({
-        where: { status: 'ACTIVE' },
+        where: { ...studentIdWhere, status: 'ACTIVE' },
         select: { studentId: true },
         distinct: ['studentId'],
       }),
-      prisma.petition.count({ where: { status: 'PENDING' } }),
-      prisma.exemption.count({ where: { status: 'PENDING' } }),
+      prisma.petition.count({ where: { ...studentIdWhere, status: 'PENDING' } }),
+      prisma.exemption.count({ where: { status: 'PENDING', ...(scopedStudentIds ? { students: { some: { studentId: { in: scopedStudentIds } } } } : {}) } }),
     ]);
 
     res.json({
@@ -60,11 +78,12 @@ router.get('/stats', async (req: Request, res: Response) => {
 
 router.get('/top-students', async (req: Request, res: Response) => {
   try {
+    const scopedStudentIds = await getStudentScope(req);
     const limit = Number(req.query.limit) || 20;
 
     const aggregated = await prisma.pointTransaction.groupBy({
       by: ['studentId'],
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', ...(scopedStudentIds ? { studentId: { in: scopedStudentIds } } : {}) },
       _sum: { points: true },
       _count: { id: true },
       orderBy: { _sum: { points: 'desc' } },
@@ -129,11 +148,13 @@ router.get('/event-stats', async (req: Request, res: Response) => {
 
 router.get('/recent-activity', async (req: Request, res: Response) => {
   try {
+    const scopedStudentIds = await getStudentScope(req);
     const limit = Number(req.query.limit) || 30;
 
     const [applications, points, exemptions] = await Promise.all([
       prisma.eventApplication.findMany({
-        take: limit,
+          where: scopedStudentIds ? { studentId: { in: scopedStudentIds } } : undefined,
+          take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
           student: { select: { fullName: true, groupNumber: true } },
@@ -141,7 +162,8 @@ router.get('/recent-activity', async (req: Request, res: Response) => {
         },
       }),
       prisma.pointTransaction.findMany({
-        take: limit,
+          where: scopedStudentIds ? { studentId: { in: scopedStudentIds } } : undefined,
+          take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
           student: { select: { fullName: true, groupNumber: true } },
@@ -150,6 +172,7 @@ router.get('/recent-activity', async (req: Request, res: Response) => {
         },
       }),
       prisma.exemption.findMany({
+        where: scopedStudentIds ? { students: { some: { studentId: { in: scopedStudentIds } } } } : undefined,
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {

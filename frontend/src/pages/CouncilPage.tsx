@@ -6,6 +6,7 @@ type Tab = 'coordinators' | 'students';
 
 interface CouncilProps {
   coordinator: Coordinator;
+  initialTab?: Tab;
 }
 
 const SECTOR_LABELS: Record<string, string> = {
@@ -26,10 +27,10 @@ const STATUS_OPTIONS = [
   { value: 'NO_STIPEND', label: 'Без стипендии' },
 ];
 
-export default function CouncilPage({ coordinator }: CouncilProps) {
+export default function CouncilPage({ coordinator, initialTab = 'coordinators' }: CouncilProps) {
   const canManage = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN' || coordinator.role === 'SECRETARY';
 
-  const [tab, setTab] = useState<Tab>('coordinators');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [coordinators, setCoordinators] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

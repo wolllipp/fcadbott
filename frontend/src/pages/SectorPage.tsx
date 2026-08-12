@@ -37,6 +37,7 @@ export default function SectorPage({ coordinator }: Props) {
   const isAdmin = coordinator.role === 'CHAIRMAN' || coordinator.role === 'DEPUTY' || coordinator.role === 'DEAN' || coordinator.role === 'SECRETARY';
   const [loading, setLoading] = useState(true);
   const [mySectorStudents, setMySectorStudents] = useState<StudentData[]>([]);
+  const [allStudents, setAllStudents] = useState<StudentData[]>([]);
   const [sectorOverview, setSectorOverview] = useState<SectorOverview>({});
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
   const [showAddToMySector, setShowAddToMySector] = useState(false);
@@ -44,6 +45,8 @@ export default function SectorPage({ coordinator }: Props) {
   const [showAddGlobal, setShowAddGlobal] = useState(false);
   const [globalForm, setGlobalForm] = useState({ fullName: '', groupNumber: '', studentCardNumber: '', sector: '', budgetStatus: 'BUDGET' });
   const [submitting, setSubmitting] = useState(false);
+  const [showStudentPicker, setShowStudentPicker] = useState(false);
+  const [studentSearch, setStudentSearch] = useState('');
   const sectorNames = Object.keys(SECTOR_LABELS);
 
   useEffect(() => { loadData(); }, []);
@@ -55,8 +58,12 @@ export default function SectorPage({ coordinator }: Props) {
         const overview = await api.council.sectorOverview();
         setSectorOverview(overview);
       } else if (coordinator.sector) {
-        const res = await api.students.list({ sector: coordinator.sector, role: coordinator.role });
+        const [res, all] = await Promise.all([
+          api.students.list({ sector: coordinator.sector, role: coordinator.role }),
+          api.council.students.list(),
+        ]);
         setMySectorStudents(res);
+        setAllStudents(all);
       }
     } catch (_) {}
     setLoading(false);
@@ -81,6 +88,18 @@ export default function SectorPage({ coordinator }: Props) {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ creatorId: coordinator.id, sector: coordinator.sector }),
       });
+      await loadData();
+    } catch (e: any) { alert(e.message); }
+  }
+
+  async function addExistingStudentToMySector(studentId: number) {
+    try {
+      await fetch('/api/council/students/' + studentId + '/sector', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorId: coordinator.id, sector: coordinator.sector }),
+      });
+      setShowStudentPicker(false);
+      setStudentSearch('');
       await loadData();
     } catch (e: any) { alert(e.message); }
   }
@@ -148,11 +167,33 @@ export default function SectorPage({ coordinator }: Props) {
           <div style={{ height: 20 }} />
         </div>
         {coordinator.sector && (
+          <>
           <div style={{ padding: '12px 16px', flexShrink: 0, borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
             <button className="btn btn-primary" onClick={() => { setNewStudentForm({ fullName: '', groupNumber: '', studentCardNumber: '', budgetStatus: 'BUDGET' }); setShowAddToMySector(true); }} style={{ width: '100%' }}>
               + Добавить студента
             </button>
+            <button className="btn btn-ghost" onClick={() => setShowStudentPicker(true)} style={{ width: '100%', marginTop: 8 }}>
+              Выбрать существующего студента
+            </button>
           </div>
+          {showStudentPicker && (
+            <div className="modal-backdrop" onClick={() => setShowStudentPicker(false)}>
+              <div className="card" style={{ width: '100%', maxWidth: 380, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 10 }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ fontWeight: 700, fontSize: 17 }}>Студенты из общего списка</div>
+                <input className="input" placeholder="Поиск по ФИО или группе" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
+                <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {allStudents.filter((s) => !s.sectors?.includes(coordinator.sector || '') && `${s.fullName} ${s.groupNumber}`.toLowerCase().includes(studentSearch.toLowerCase())).map((s) => (
+                    <button key={s.id} className="card" onClick={() => addExistingStudentToMySector(s.id)} style={{ textAlign: 'left', color: 'var(--text)', cursor: 'pointer', padding: 10 }}>
+                      <div style={{ fontWeight: 600 }}>{s.fullName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber || '—'}</div>
+                    </button>
+                  ))}
+                </div>
+                <button className="btn btn-ghost" onClick={() => setShowStudentPicker(false)}>Закрыть</button>
+              </div>
+            </div>
+          )}
+          </>
         )}
         {showAddToMySector && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16, animation: 'fadeIn 0.15s ease' }}

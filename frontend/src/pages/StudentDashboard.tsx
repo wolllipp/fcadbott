@@ -178,7 +178,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
       });
       const apps = await api.applications.list({ studentId: student.id }).catch(() => []);
       setApplications(apps);
-      showToast('Ты записан на мероприятие! Не забудь отсканировать QR', 'success');
+      showToast('Ты отправил заявку! Дождись подтверждения координатора.', 'info');
     } catch (e: any) { alert(e.message); }
     setRegistering(null);
   }
@@ -228,11 +228,17 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     );
   }
 
+  const activeApplications = applications.filter((a) => ['PENDING', 'APPROVED', 'AWAITING_MARK'].includes(a.status));
+  const applicationEvents = events.filter((e) => {
+    const app = activeApplications.find((a) => a.eventId === e.id);
+    return app && (e as any).status !== 'DRAFT' && !((e as any).attendanceFinalized);
+  });
   const upcomingEvents = events.filter((e) => {
     if ((e as any).status === 'DRAFT') return false;
     if (new Date(e.eventDate) < new Date(new Date().setHours(0, 0, 0, 0))) return false;
     if (!myEventIds.has(e.id)) return false;
     if ((e as any).attendanceFinalized) return false;
+    if (activeApplications.some((a) => a.eventId === e.id)) return false;
     return true;
   });
   const availableEvents = events.filter((e) => {
@@ -240,6 +246,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     if (new Date(e.eventDate) < new Date(new Date().setHours(0, 0, 0, 0))) return false;
     if (myEventIds.has(e.id)) return false;
     if ((e as any).attendanceFinalized) return false;
+    if (activeApplications.some((a) => a.eventId === e.id)) return false;
     return true;
   });
   const attendedEvents = events.filter((e) => myAttendedIds.includes(e.id));
@@ -346,6 +353,25 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </>
             )}
 
+            {applicationEvents.length > 0 && (
+              <>
+                <div className="section-label" style={{ marginTop: availableEvents.length > 0 ? 16 : 0 }}>Мои заявки</div>
+                {applicationEvents.map((ev) => {
+                  const app = activeApplications.find((a) => a.eventId === ev.id)!;
+                  const approved = ['APPROVED', 'AWAITING_MARK'].includes(app.status);
+                  return (
+                    <div key={ev.id} className="card" style={{ animation: 'fadeIn 0.2s ease both', borderColor: approved ? 'var(--success-dim)' : 'var(--warning-dim)' }}>
+                      <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{ev.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{fmtDate(ev.eventDate)} {ev.location ? `· ${ev.location}` : ''}</div>
+                      <button className="btn btn-ghost" disabled style={{ padding: '10px', fontSize: 13, color: approved ? 'var(--success)' : 'var(--warning)', borderColor: approved ? 'var(--success)' : 'var(--warning)' }}>
+                        {approved ? '✓ Вы записаны' : '⏳ Заявка подана — ждите подтверждения'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
             {upcomingEvents.length > 0 && (
               <>
                 <div className="section-label" style={{ marginTop: availableEvents.length > 0 ? 16 : 0 }}>Предстоящие</div>
@@ -395,7 +421,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </>
             )}
 
-            {availableEvents.length === 0 && upcomingEvents.length === 0 && attendedEvents.length === 0 && missedEvents.length === 0 && (
+            {availableEvents.length === 0 && applicationEvents.length === 0 && upcomingEvents.length === 0 && attendedEvents.length === 0 && missedEvents.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>
                 <div style={{ fontSize: 32, marginBottom: 12, color: 'var(--text-muted)' }}><IconAward size={32} /></div>
                 Нет мероприятий

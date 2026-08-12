@@ -144,10 +144,10 @@ export const api = {
       apiRequest('/points/bulk', { method: 'POST', body: JSON.stringify(data) }),
   },
   admin: {
-    stats: () => apiRequest('/admin/stats'),
-    topStudents: (limit?: number) => apiRequest(`/admin/top-students${limit ? `?limit=${limit}` : ''}`),
+    stats: (coordinatorId?: number) => apiRequest(`/admin/stats${coordinatorId ? `?coordinatorId=${coordinatorId}` : ''}`),
+    topStudents: (limit?: number, coordinatorId?: number) => apiRequest(`/admin/top-students?${new URLSearchParams({ ...(limit ? { limit: String(limit) } : {}), ...(coordinatorId ? { coordinatorId: String(coordinatorId) } : {}) }).toString()}`),
     eventStats: () => apiRequest('/admin/event-stats'),
-    recentActivity: (limit?: number) => apiRequest(`/admin/recent-activity${limit ? `?limit=${limit}` : ''}`),
+    recentActivity: (limit?: number, coordinatorId?: number) => apiRequest(`/admin/recent-activity?${new URLSearchParams({ ...(limit ? { limit: String(limit) } : {}), ...(coordinatorId ? { coordinatorId: String(coordinatorId) } : {}) }).toString()}`),
   },
   attendance: {
     getQr: (applicationId: number) => apiRequest(`/attendance/qr/${applicationId}`),

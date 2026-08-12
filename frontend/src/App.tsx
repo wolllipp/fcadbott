@@ -24,7 +24,7 @@ declare global {
   }
 }
 
-export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'petitions' | 'stats' | 'applications' | 'scanner';
+export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'students' | 'petitions' | 'stats' | 'applications' | 'scanner';
 
 export interface Coordinator {
   id: number;
@@ -35,7 +35,8 @@ export interface Coordinator {
 }
 
 function isInTelegram(): boolean {
-  return !!(window.Telegram?.WebApp?.initData);
+  const webApp = window.Telegram?.WebApp;
+  return !!(webApp?.initData && webApp?.initDataUnsafe?.user);
 }
 
 export default function App() {
@@ -164,6 +165,7 @@ export default function App() {
         {tab === 'sector' && (isAdmin ? <CouncilPage coordinator={coordinator} /> : <SectorPage coordinator={coordinator} />)}
         {tab === 'events' && <EventsPage coordinator={coordinator} />}
         {tab === 'council' && <CouncilPage coordinator={coordinator} />}
+        {tab === 'students' && <CouncilPage coordinator={coordinator} initialTab="students" />}
         {tab === 'petitions' && <PetitionsAdminPage coordinator={coordinator} />}
         {tab === 'stats' && <AdminStatsPage coordinator={coordinator} />}
         {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}

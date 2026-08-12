@@ -53,9 +53,9 @@ export default function AdminStatsPage({ coordinator }: { coordinator: Coordinat
       setLoading(true);
       try {
         const [s, top, act] = await Promise.all([
-          api.admin.stats(),
-          api.admin.topStudents(15),
-          api.admin.recentActivity(20),
+          api.admin.stats(coordinator.id),
+          api.admin.topStudents(15, coordinator.id),
+          api.admin.recentActivity(20, coordinator.id),
         ]);
         setStats(s);
         setTopStudents(top);
