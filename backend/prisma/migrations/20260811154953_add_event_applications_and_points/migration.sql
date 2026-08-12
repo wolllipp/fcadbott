@@ -40,7 +40,7 @@ ADD COLUMN     "status" "EventStatus" NOT NULL DEFAULT 'DRAFT',
 ALTER COLUMN "createdBy" SET NOT NULL;
 
 -- AlterTable
-ALTER TABLE "Exemption" ADD COLUMN     "isPrinted" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Exemption" ADD COLUMN IF NOT EXISTS "isPrinted" BOOLEAN NOT NULL DEFAULT false;
 
 -- CreateTable
 CREATE TABLE "EventApplication" (
