@@ -4,6 +4,13 @@ import crypto from 'crypto';
 
 const router = Router();
 
+async function canScan(event: { createdBy: number; scannerAssignments: { coordinatorId: number }[] }, coordinatorId: number) {
+  const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId }, select: { role: true } });
+  if (!coordinator) return false;
+  if (['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator.role)) return true;
+  return event.createdBy === coordinatorId || event.scannerAssignments.some((a) => a.coordinatorId === coordinatorId);
+}
+
 function generateQrToken(): string {
   return crypto.randomBytes(24).toString('hex');
 }
@@ -65,12 +72,18 @@ router.post('/scan', async (req: Request, res: Response) => {
     const application = await prisma.eventApplication.findUnique({
       where: { qrToken },
       include: {
-        event: { select: { id: true, name: true, eventDate: true, pointsForAttendance: true, status: true } },
+        event: {
+          select: {
+            id: true, name: true, eventDate: true, pointsForAttendance: true, status: true, createdBy: true,
+            scannerAssignments: { select: { coordinatorId: true } },
+          },
+        },
         student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } },
       },
     });
 
     if (!application) return res.status(404).json({ error: 'QR-код не распознан' });
+    if (!(await canScan(application.event, Number(coordinatorId)))) return res.status(403).json({ error: 'Вы не назначены отмечающим на это мероприятие' });
     if (application.status !== 'APPROVED') return res.status(400).json({ error: 'Заявка не одобрена' });
     if (application.event.status === 'CANCELLED') return res.status(400).json({ error: 'Мероприятие отменено' });
 
@@ -204,12 +217,18 @@ router.post('/manual-check', async (req: Request, res: Response) => {
     const application = await prisma.eventApplication.findUnique({
       where: { id: applicationId },
       include: {
-        event: { select: { id: true, name: true, eventDate: true, pointsForAttendance: true, status: true } },
+        event: {
+          select: {
+            id: true, name: true, eventDate: true, pointsForAttendance: true, status: true, createdBy: true,
+            scannerAssignments: { select: { coordinatorId: true } },
+          },
+        },
         student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } },
       },
     });
 
     if (!application) return res.status(404).json({ error: 'Application not found' });
+    if (!(await canScan(application.event, Number(coordinatorId)))) return res.status(403).json({ error: 'Вы не назначены отмечающим на это мероприятие' });
     if (application.status !== 'APPROVED' && application.status !== 'ATTENDANCE_CONFIRMED') {
       return res.status(400).json({ error: 'Заявка в недопустимом статусе' });
     }

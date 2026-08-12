@@ -91,6 +91,7 @@ model Coordinator {
   exemptions       Exemption[]
   events           Event[]   @relation("EventCreator")
   scannedEvents    Event[]   @relation("ScannerCoordinator")
+  scannerAssignments EventScannerCoordinator[]
   bonusSubmissions BonusSubmission[]
   pointTransactions PointTransaction[]
   approvedApplications EventApplication[]
@@ -179,6 +180,7 @@ model Event {
 
   creator      Coordinator        @relation("EventCreator", fields: [createdBy], references: [id])
   scannerCoordinator Coordinator? @relation("ScannerCoordinator", fields: [scannerCoordinatorId], references: [id])
+  scannerAssignments EventScannerCoordinator[]
   participants EventParticipant[]
 
   createdAt DateTime @default(now())
@@ -196,6 +198,16 @@ model Event {
 
   applications       EventApplication[]
   pointTransactions  PointTransaction[]
+}
+
+model EventScannerCoordinator {
+  eventId       Int
+  coordinatorId Int
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  coordinator   Coordinator @relation(fields: [coordinatorId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, coordinatorId])
+  @@index([coordinatorId])
 }
 
 model EventParticipant {

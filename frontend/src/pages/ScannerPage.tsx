@@ -53,7 +53,7 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
         if (e.status === 'CANCELLED') return false;
         const isAdmin = ['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator.role);
         if (isAdmin) return true;
-        return e.createdBy === coordinator.id || (e.scannerCoordinator && e.scannerCoordinator.id === coordinator.id);
+        return e.createdBy === coordinator.id || (e.scannerAssignments || []).some((a: any) => a.coordinator?.id === coordinator.id) || (e.scannerCoordinator && e.scannerCoordinator.id === coordinator.id);
       });
       setEvents(active);
     }).catch(() => {});

@@ -4,6 +4,12 @@ import { prisma } from '../lib/prisma';
 import { sendNewEvent } from "../services/bot";
 const router = Router();
 
+function scannerIds(value: unknown, fallback: number): number[] {
+  const values = Array.isArray(value) ? value : value ? [value] : [];
+  const ids = values.map(Number).filter((id) => Number.isInteger(id) && id > 0);
+  return [...new Set(ids.length ? ids : [fallback])];
+}
+
 
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -24,10 +30,11 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId } = req.body;
+    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds } = req.body;
     if (!name || !eventDate) return res.status(400).json({ error: 'name and eventDate required' });
     if (!coordinatorId) return res.status(400).json({ error: 'coordinatorId required' });
 
+    const assignedScannerIds = scannerIds(scannerCoordinatorIds ?? scannerCoordinatorId, coordinatorId);
     const event = await prisma.event.create({
       data: {
         name,
@@ -35,6 +42,7 @@ router.post('/', async (req: Request, res: Response) => {
         description,
         createdBy: coordinatorId,
         scannerCoordinatorId: scannerCoordinatorId || coordinatorId,
+        scannerAssignments: { create: assignedScannerIds.map((coordinatorId) => ({ coordinatorId })) },
         location: location || null,
         status: status || 'DRAFT',
         pointsForAttendance: pointsForAttendance || 0,
@@ -47,6 +55,7 @@ router.post('/', async (req: Request, res: Response) => {
         participants: true,
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+        scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
       },
     });
 
@@ -63,7 +72,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId } = req.body;
+    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds } = req.body;
     const id = Number(req.params.id);
     const isAdmin = role && !['COORDINATOR'].includes(role as string);
 
@@ -72,6 +81,9 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (!isAdmin && existing.createdBy !== coordinatorId) return res.status(403).json({ error: 'Вы можете редактировать только свои мероприятия' });
     if (!isAdmin && existing.attendanceFinalized) return res.status(403).json({ error: 'Отметка завершена — редактирование недоступно' });
 
+    const assignedScannerIds = scannerCoordinatorIds !== undefined || scannerCoordinatorId !== undefined
+      ? scannerIds(scannerCoordinatorIds ?? scannerCoordinatorId, existing.createdBy)
+      : null;
     const event = await prisma.event.update({
       where: { id },
       data: {
@@ -86,11 +98,18 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(facultyOnly !== undefined && { facultyOnly }),
         ...(requireApproval !== undefined && { requireApproval }),
         ...(scannerCoordinatorId !== undefined && { scannerCoordinatorId: scannerCoordinatorId || null }),
+        ...(assignedScannerIds && {
+          scannerAssignments: {
+            deleteMany: {},
+            create: assignedScannerIds.map((coordinatorId) => ({ coordinatorId })),
+          },
+        }),
       },
       include: {
         participants: true,
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+        scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
       },
     });
 
@@ -228,6 +247,7 @@ router.get('/by-student', async (req: Request, res: Response) => {
         },
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+        scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
       },
       orderBy: { eventDate: 'desc' },
     });
@@ -309,6 +329,7 @@ router.post('/:id/finalize-attendance', async (req: Request, res: Response) => {
         participants: true,
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+        scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
       },
     });
     res.json(updated);
