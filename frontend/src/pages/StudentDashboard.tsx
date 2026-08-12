@@ -271,12 +271,16 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
             background: 'var(--accent-dim)', border: '2px solid var(--accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-            overflow: 'hidden',
+            overflow: 'hidden', position: 'relative',
           }}>
-            {(student as any).photoUrl ? (
-              <img src={(student as any).photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              student.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)
+            <span>{student.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
+            {((student as any).photoUrl || (student as any).chatId) && (
+              <img
+                src={(student as any).photoUrl || `/api/auth/avatar/${(student as any).chatId}`}
+                alt=""
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
             )}
           </div>
           <div>
@@ -291,7 +295,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, padding: '16px 16px 0' }}>
+      <div className="tab-row" style={{ padding: '16px 16px 0' }}>
         {([
           { id: 'events' as Tab, label: 'Мероприятия' },
           { id: 'exemptions' as Tab, label: 'Освобождения' },
@@ -300,7 +304,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
         ]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{
-              flex: 1, padding: '10px', borderRadius: 8, border: 'none',
+              padding: '10px 14px', borderRadius: 8, border: 'none',
               background: tab === t.id ? 'var(--accent)' : 'var(--bg-raised)',
               color: tab === t.id ? 'white' : 'var(--text)',
               fontWeight: 600, fontSize: 13, cursor: 'pointer',
@@ -313,7 +317,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
         ))}
       </div>
 
-      <div className="page-scroll" style={{ padding: '0 16px', marginTop: 12 }}>
+      <div key={tab} className="page-scroll page-anim" style={{ padding: '0 16px', marginTop: 12 }}>
         {tab === 'events' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {availableEvents.length > 0 && (

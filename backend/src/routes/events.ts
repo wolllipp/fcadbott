@@ -93,6 +93,12 @@ router.put('/:id', async (req: Request, res: Response) => {
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
       },
     });
+
+    // Notify students when a draft becomes published
+    if (existing.status !== 'PUBLISHED' && event.status === 'PUBLISHED') {
+      try { await sendNewEvent(event); } catch (_) {}
+    }
+
     res.json(event);
   } catch (err) {
     console.error(err);

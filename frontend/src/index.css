@@ -207,6 +207,38 @@ html, body, #root {
   50% { box-shadow: 0 0 0 6px rgba(123,110,246,0.08); }
 }
 
+/* Page-open animation */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-anim {
+  animation: pageIn 0.3s ease both;
+}
+
+/* Registration mascot peeking from the bottom */
+@keyframes mascotPeek {
+  from { transform: translateX(-50%) translateY(110%); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Floating stickers (uses `translate` so rotate transform stays intact) */
+@keyframes stickerFloat {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+
+/* Horizontally scrollable tab row that stays on one line */
+.tab-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tab-row::-webkit-scrollbar { display: none; }
+.tab-row > button { white-space: nowrap; flex-shrink: 0; }
+
 .animate-in { animation: fadeIn 0.25s ease forwards; }
 .animate-scale { animation: scaleIn 0.2s ease forwards; }
 .animate-pulse { animation: pulse 2s ease-in-out infinite; }

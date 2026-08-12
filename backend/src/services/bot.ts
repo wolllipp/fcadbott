@@ -21,13 +21,25 @@ export async function initBot() {
 
   bot.onText(/\/start/, async (msg) => {
     const username = msg.from?.username;
-    if (!username) return;
+    const appUrl = process.env.WEBAPP_URL || 'https://fcadbot.site';
+    const openAppKeyboard = {
+      inline_keyboard: [[{ text: '🚀 Открыть приложение', web_app: { url: appUrl } }]],
+    };
+
+    if (!username) {
+      bot!.sendMessage(msg.chat.id,
+        '👋 *Добро пожаловать в ФКадБот!*\n\nЧтобы пользоваться приложением, установите username в настройках Telegram и нажмите /start ещё раз.',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
     const coordinator = await prisma.coordinator.findUnique({ where: { telegramUsername: username } });
     if (coordinator) {
       await prisma.coordinator.update({ where: { id: coordinator.id }, data: { chatId: String(msg.chat.id) } });
       bot!.sendMessage(msg.chat.id,
-        `👋 Добро пожаловать, *${coordinator.fullName}*!\n\nОткройте Mini App через кнопку меню.`,
-        { parse_mode: 'Markdown' }
+        `👋 Добро пожаловать, *${coordinator.fullName}*!\n\nНажмите кнопку ниже, чтобы открыть приложение студсовета.`,
+        { parse_mode: 'Markdown', reply_markup: openAppKeyboard }
       );
       return;
     }
@@ -36,13 +48,16 @@ export async function initBot() {
     if (student) {
       await prisma.student.update({ where: { id: student.id }, data: { chatId: String(msg.chat.id) } });
       bot!.sendMessage(msg.chat.id,
-        `👋 Добро пожаловать, *${student.fullName}*!\n\nОткройте Mini App через кнопку меню, чтобы просматривать мероприятия, освобождения и ходатайства.`,
-        { parse_mode: 'Markdown' }
+        `👋 Добро пожаловать, *${student.fullName}*!\n\nНажмите кнопку ниже, чтобы открыть приложение: мероприятия, освобождения, баллы и ходатайства.`,
+        { parse_mode: 'Markdown', reply_markup: openAppKeyboard }
       );
       return;
     }
 
-    bot!.sendMessage(msg.chat.id, '❌ Доступ запрещён.');
+    bot!.sendMessage(msg.chat.id,
+      '👋 *Добро пожаловать в ФКадБот — приложение студсовета ФКП!*\n\nЗдесь можно записываться на мероприятия, получать баллы, освобождения и подавать ходатайства.\n\n▫️ Нажмите *«Открыть приложение»*, чтобы войти\n▫️ Если вы ещё не зарегистрированы — пройдите быструю регистрацию прямо в приложении',
+      { parse_mode: 'Markdown', reply_markup: openAppKeyboard }
+    );
   });
 }
 
@@ -62,8 +77,42 @@ async function getSecretaryChatIds(): Promise<string[]> {
   return targets.map((t) => t.chatId!).filter(Boolean);
 }
 
+const remindedEvents = new Set<string>();
+
 export async function sendEventReminders() {
-  // new function from updated repo - keep stub
+  if (!bot) return;
+  try {
+    const now = new Date();
+    const tomorrowStart = new Date(now); tomorrowStart.setDate(now.getDate() + 1); tomorrowStart.setHours(0, 0, 0, 0);
+    const tomorrowEnd = new Date(tomorrowStart); tomorrowEnd.setHours(23, 59, 59, 999);
+
+    const events = await prisma.event.findMany({
+      where: { status: 'PUBLISHED', eventDate: { gte: tomorrowStart, lte: tomorrowEnd } },
+    });
+
+    for (const event of events) {
+      const key = `${event.id}:${tomorrowStart.toISOString().slice(0, 10)}`;
+      if (remindedEvents.has(key)) continue;
+      remindedEvents.add(key);
+
+      const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const message =
+        `⏰ *Напоминание о мероприятии*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Завтра, *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}\nНе забудьте прийти и отметиться по QR-коду!`;
+
+      const applications = await prisma.eventApplication.findMany({
+        where: { eventId: event.id, status: { in: ['APPROVED', 'AWAITING_MARK'] } },
+        include: { student: true },
+      });
+      const sent = new Set<string>();
+      for (const app of applications) {
+        const chatId = app.student?.chatId;
+        if (chatId && !sent.has(chatId)) {
+          sent.add(chatId);
+          try { await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }); } catch (_) {}
+        }
+      }
+    }
+  } catch (e) { console.error('sendEventReminders error:', e); }
 }
 
 export async function sendExemptionPending(exemption: any) {

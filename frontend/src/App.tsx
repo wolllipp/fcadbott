@@ -17,7 +17,6 @@ import NavBar from './components/NavBar';
 import LoadingScreen from './components/LoadingScreen';
 import AccessDenied from './components/AccessDenied';
 import { MascotToastProvider } from './components/MascotToast';
-import MascotChat from './components/MascotChat';
 
 declare global {
   interface Window {
@@ -146,7 +145,6 @@ export default function App() {
     return (
       <MascotToastProvider>
         <StudentDashboard student={student} onLogout={handleStudentLogout} />
-        <MascotChat />
       </MascotToastProvider>
     );
   }
@@ -159,16 +157,18 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {tab === 'home' && <HomePage coordinator={coordinator} onNavigate={setTab} />}
-      {tab === 'exemptions' && <ExemptionsPage coordinator={coordinator} />}
-      {tab === 'bonuses' && <BonusesPage coordinator={coordinator} />}
-      {tab === 'sector' && (isAdmin ? <CouncilPage coordinator={coordinator} /> : <SectorPage coordinator={coordinator} />)}
-      {tab === 'events' && <EventsPage coordinator={coordinator} />}
-      {tab === 'council' && <CouncilPage coordinator={coordinator} />}
-      {tab === 'petitions' && <PetitionsAdminPage coordinator={coordinator} />}
-      {tab === 'stats' && <AdminStatsPage coordinator={coordinator} />}
-      {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}
-      {tab === 'scanner' && <ScannerPage coordinator={coordinator} />}
+      <div key={tab} className="page-anim" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        {tab === 'home' && <HomePage coordinator={coordinator} onNavigate={setTab} />}
+        {tab === 'exemptions' && <ExemptionsPage coordinator={coordinator} />}
+        {tab === 'bonuses' && <BonusesPage coordinator={coordinator} />}
+        {tab === 'sector' && (isAdmin ? <CouncilPage coordinator={coordinator} /> : <SectorPage coordinator={coordinator} />)}
+        {tab === 'events' && <EventsPage coordinator={coordinator} />}
+        {tab === 'council' && <CouncilPage coordinator={coordinator} />}
+        {tab === 'petitions' && <PetitionsAdminPage coordinator={coordinator} />}
+        {tab === 'stats' && <AdminStatsPage coordinator={coordinator} />}
+        {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}
+        {tab === 'scanner' && <ScannerPage coordinator={coordinator} />}
+      </div>
       <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} />
     </div>
   );

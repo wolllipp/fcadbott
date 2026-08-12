@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import https from 'https';
 import { prisma } from '../lib/prisma';
+import { getBot } from '../services/bot';
 
 const router = Router();
 
@@ -84,12 +86,16 @@ router.post('/verify', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Access denied. You are not a member of the Student Council.' });
     }
 
-    // Save chatId if we have it
+    // Save chatId and profile photo if we have them
     if (user.id) {
       await prisma.coordinator.update({
         where: { id: coordinator.id },
-        data: { chatId: String(user.id) },
+        data: {
+          chatId: String(user.id),
+          ...(user.photo_url && { photoUrl: user.photo_url }),
+        },
       });
+      if (user.photo_url) (coordinator as any).photoUrl = user.photo_url;
     }
 
     res.json({ coordinator });
@@ -119,11 +125,13 @@ router.post('/student-register', async (req: Request, res: Response) => {
     }
 
     let chatId: string | undefined;
+    let photoUrl: string | undefined;
     if (initData) {
       const data = verifyTelegramWebAppData(initData);
       if (data) {
         const user = JSON.parse(data.user || '{}');
         if (user.id) chatId = String(user.id);
+        if (user.photo_url) photoUrl = user.photo_url;
       }
     }
 
@@ -134,6 +142,7 @@ router.post('/student-register', async (req: Request, res: Response) => {
         groupNumber: groupNumber || student.groupNumber,
         budgetStatus: budgetStatus || student.budgetStatus,
         ...(chatId && { chatId }),
+        ...(photoUrl && { photoUrl }),
       },
     });
 
@@ -159,24 +168,29 @@ router.post('/student-login', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Студент не найден. Пройдите регистрацию.' });
     }
 
-    // Extract chatId from initData
+    // Extract chatId and profile photo from initData
     let chatId: string | undefined;
+    let photoUrl: string | undefined;
     if (initData) {
       const data = verifyTelegramWebAppData(initData);
       if (data) {
         const user = JSON.parse(data.user || '{}');
         if (user.id) chatId = String(user.id);
+        if (user.photo_url) photoUrl = user.photo_url;
       }
     }
 
-    if (chatId && student.chatId !== chatId) {
+    if ((chatId && student.chatId !== chatId) || (photoUrl && student.photoUrl !== photoUrl)) {
       await prisma.student.update({
         where: { id: student.id },
-        data: { chatId },
+        data: {
+          ...(chatId && { chatId }),
+          ...(photoUrl && { photoUrl }),
+        },
       });
     }
 
-    res.json({ student: { ...student, chatId: chatId || student.chatId } });
+    res.json({ student: { ...student, chatId: chatId || student.chatId, photoUrl: photoUrl || student.photoUrl } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -204,6 +218,32 @@ router.put('/profile', async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Proxy the user's Telegram profile photo (fallback when initData has no photo_url)
+router.get('/avatar/:chatId', async (req: Request, res: Response) => {
+  try {
+    const bot = getBot();
+    if (!bot) return res.status(503).end();
+
+    const photos = await bot.getUserProfilePhotos(Number(req.params.chatId), { limit: 1 } as any);
+    if (!photos || !photos.total_count) return res.status(404).end();
+
+    const sizes = photos.photos[0];
+    const fileId = sizes[sizes.length - 1].file_id;
+    const file = await bot.getFile(fileId);
+    if (!file.file_path) return res.status(404).end();
+
+    const url = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
+    https.get(url, (tgRes) => {
+      if (tgRes.statusCode !== 200) { res.status(404).end(); tgRes.resume(); return; }
+      res.set('Content-Type', tgRes.headers['content-type'] || 'image/jpeg');
+      res.set('Cache-Control', 'public, max-age=3600');
+      tgRes.pipe(res);
+    }).on('error', () => res.status(404).end());
+  } catch (err) {
+    res.status(404).end();
   }
 });
 

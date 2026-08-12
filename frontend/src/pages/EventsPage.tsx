@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Coordinator } from '../App';
 import { api } from '../utils/api';
+import CalendarField from '../components/CalendarField';
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="section-label" style={{ marginBottom: 0 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
 
 interface EventData {
   id: number;
@@ -291,24 +301,28 @@ export default function EventsPage({ coordinator }: Props) {
         )}
 
         {(step === 'create' || step === 'edit') && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div className="section-label">Название *</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 24 }}>
+            <Field label="Название *">
             <input className="input" placeholder="Название мероприятия"
               value={step === 'create' ? newEvent.name : editingEvent.name}
               onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, name: e.target.value }) : setEditingEvent({ ...editingEvent, name: e.target.value })} />
-            <div className="section-label">Дата *</div>
-            <input className="input" type="date"
+            </Field>
+            <Field label="Дата *">
+            <CalendarField
               value={step === 'create' ? newEvent.eventDate : editingEvent.eventDate}
-              onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, eventDate: e.target.value }) : setEditingEvent({ ...editingEvent, eventDate: e.target.value })} />
-            <div className="section-label">Описание</div>
+              onChange={(v) => step === 'create' ? setNewEvent({ ...newEvent, eventDate: v }) : setEditingEvent({ ...editingEvent, eventDate: v })} />
+            </Field>
+            <Field label="Описание">
             <textarea className="input" placeholder="Описание (необязательно)" rows={3} style={{ resize: 'none' }}
               value={step === 'create' ? newEvent.description : editingEvent.description}
               onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, description: e.target.value }) : setEditingEvent({ ...editingEvent, description: e.target.value })} />
-            <div className="section-label">Место проведения</div>
+            </Field>
+            <Field label="Место проведения">
             <input className="input" placeholder="Аудитория, корпус..."
               value={step === 'create' ? newEvent.location : editingEvent.location}
               onChange={(e) => step === 'create' ? setNewEvent({ ...newEvent, location: e.target.value }) : setEditingEvent({ ...editingEvent, location: e.target.value })} />
-            <div className="section-label">Аудитория</div>
+            </Field>
+            <Field label="Аудитория">
             <div style={{ display: 'flex', gap: 6 }}>
               {[
                 { id: 'ALL', label: 'Все студенты' },
@@ -326,21 +340,24 @@ export default function EventsPage({ coordinator }: Props) {
                 </button>
               ))}
             </div>
-            <div className="section-label">Баллы за посещение</div>
+            </Field>
+            <Field label="Баллы за посещение">
             <input className="input" type="number" min={0} placeholder="0"
               value={step === 'create' ? newEvent.pointsForAttendance || '' : editingEvent.pointsForAttendance || ''}
               onChange={(e) => {
                 const v = parseInt(e.target.value) || 0;
                 step === 'create' ? setNewEvent({ ...newEvent, pointsForAttendance: v }) : setEditingEvent({ ...editingEvent, pointsForAttendance: v });
               }} />
-            <div className="section-label">Макс. участников</div>
+            </Field>
+            <Field label="Макс. участников">
             <input className="input" type="number" min={0} placeholder="Без ограничений"
               value={step === 'create' ? newEvent.maxParticipants || '' : editingEvent.maxParticipants || ''}
               onChange={(e) => {
                 const v = parseInt(e.target.value) || 0;
                 step === 'create' ? setNewEvent({ ...newEvent, maxParticipants: v }) : setEditingEvent({ ...editingEvent, maxParticipants: v });
               }} />
-            <div className="section-label">Отмечающий на мероприятии</div>
+            </Field>
+            <Field label="Отмечающий на мероприятии">
             <select className="input"
               value={step === 'create' ? newEvent.scannerCoordinatorId : editingEvent.scannerCoordinatorId}
               onChange={(e) => {
@@ -352,7 +369,8 @@ export default function EventsPage({ coordinator }: Props) {
                 <option key={c.id} value={c.id}>{c.fullName} (@{c.telegramUsername})</option>
               ))}
             </select>
-            <div style={{ display: 'flex', gap: 8 }}>
+            </Field>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               {step === 'create' ? (
                 <>
                   <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setNewEvent({ ...newEvent, status: 'DRAFT' }); createEvent(); }} disabled={submitting}>
@@ -453,8 +471,8 @@ export default function EventsPage({ coordinator }: Props) {
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                     Будет включено {attendedCount} участн. (кто был на мероприятии)
                   </div>
-                  <input className="input" type="date" placeholder="Дата освобождения" value={exemptionDate}
-                    onChange={(e) => setExemptionDate(e.target.value)} />
+                  <CalendarField placeholder="Дата освобождения" value={exemptionDate}
+                    onChange={(v) => setExemptionDate(v)} />
                   <input className="input" placeholder="Причина (по умолчанию: название мероприятия)" value={exemptionReason}
                     onChange={(e) => setExemptionReason(e.target.value)} />
                 </div>

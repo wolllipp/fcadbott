@@ -43,6 +43,7 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
   const [processing, setProcessing] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [cameraActive, setCameraActive] = useState(false);
+  const [nativeScan, setNativeScan] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
@@ -97,7 +98,25 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
   }
 
   async function startCamera() {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg && typeof tg.showScanQrPopup === 'function') {
+      setCameraActive(true);
+      setNativeScan(true);
+      tg.showScanQrPopup(
+        { text: 'Поднесите QR-код к камере' },
+        (text: string | null) => {
+          setCameraActive(false);
+          setNativeScan(false);
+          if (text) {
+            setScanInput(text);
+          }
+        }
+      );
+      return;
+    }
+
     setCameraActive(true);
+    setNativeScan(false);
     try {
       const scanner = new Html5Qrcode('qr-reader');
       scannerRef.current = scanner;
@@ -120,7 +139,12 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
   }
 
   async function stopCamera() {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg && typeof tg.closeScanQrPopup === 'function') {
+      try { tg.closeScanQrPopup(); } catch (_) {}
+    }
     setCameraActive(false);
+    setNativeScan(false);
     if (scannerRef.current) {
       try { await scannerRef.current.stop(); } catch (_) {}
       scannerRef.current = null;
@@ -270,7 +294,13 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
             <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
               {cameraActive ? (
                 <div>
-                  <div id="qr-reader" style={{ width: '100%', maxWidth: 300, margin: '0 auto' }} />
+                  {nativeScan ? (
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                      Сканирование через камеру Telegram… Наведите на QR-код.
+                    </div>
+                  ) : (
+                    <div id="qr-reader" style={{ width: '100%', maxWidth: 300, margin: '0 auto' }} />
+                  )}
                   <button className="btn btn-ghost" onClick={stopCamera} style={{ marginTop: 10 }}>
                     Остановить камеру
                   </button>
