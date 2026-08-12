@@ -5,14 +5,14 @@ interface Props {
 }
 
 const STICKERS: { emoji: string; top?: string; bottom?: string; left?: string; right?: string; size: number; rotate: number; delay: number }[] = [
-  { emoji: '🎉', top: '6%', left: '6%', size: 30, rotate: -14, delay: 0 },
-  { emoji: '⭐', top: '4%', right: '8%', size: 26, rotate: 12, delay: 0.6 },
-  { emoji: '🎓', top: '22%', right: '4%', size: 32, rotate: 18, delay: 1.2 },
-  { emoji: '📚', top: '26%', left: '3%', size: 28, rotate: -10, delay: 0.9 },
-  { emoji: '🏆', top: '48%', left: '4%', size: 26, rotate: 8, delay: 0.3 },
-  { emoji: '🎯', top: '52%', right: '5%', size: 28, rotate: -12, delay: 1.5 },
-  { emoji: '💜', bottom: '26%', left: '10%', size: 24, rotate: -16, delay: 0.7 },
-  { emoji: '🚀', bottom: '30%', right: '9%', size: 30, rotate: 14, delay: 1.1 },
+  { emoji: '🎉', bottom: '34%', left: '8%', size: 30, rotate: -14, delay: 0 },
+  { emoji: '⭐', bottom: '40%', right: '10%', size: 26, rotate: 12, delay: 0.6 },
+  { emoji: '🎓', bottom: '22%', right: '6%', size: 32, rotate: 18, delay: 1.2 },
+  { emoji: '📚', bottom: '28%', left: '4%', size: 28, rotate: -10, delay: 0.9 },
+  { emoji: '🏆', bottom: '16%', left: '14%', size: 26, rotate: 8, delay: 0.3 },
+  { emoji: '🎯', bottom: '12%', right: '12%', size: 28, rotate: -12, delay: 1.5 },
+  { emoji: '💜', bottom: '8%', left: '22%', size: 24, rotate: -16, delay: 0.7 },
+  { emoji: '🚀', bottom: '6%', right: '20%', size: 30, rotate: 14, delay: 1.1 },
 ];
 
 export default function StudentLoginPage({ onLogin }: Props) {
@@ -80,10 +80,10 @@ export default function StudentLoginPage({ onLogin }: Props) {
         {STICKERS.map((s, i) => (
           <span key={i} style={{
             position: 'absolute', top: s.top, bottom: s.bottom, left: s.left, right: s.right,
-            fontSize: s.size, opacity: 0.55,
+            fontSize: s.size, opacity: 0.5,
             transform: `rotate(${s.rotate}deg)`,
             animation: `stickerFloat 3.5s ease-in-out ${s.delay}s infinite`,
-            filter: 'drop-shadow(0 2px 8px rgba(123,110,246,0.25))',
+            filter: 'blur(1.5px) drop-shadow(0 2px 8px rgba(123,110,246,0.25))',
           }}>{s.emoji}</span>
         ))}
       </div>
@@ -92,7 +92,7 @@ export default function StudentLoginPage({ onLogin }: Props) {
       <div style={{
         flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: '24px 24px 170px', position: 'relative', zIndex: 2,
+        padding: '24px 24px 220px', position: 'relative', zIndex: 2,
       }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Вход для студентов</h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, textAlign: 'center' }}>
@@ -172,8 +172,8 @@ export default function StudentLoginPage({ onLogin }: Props) {
 
       {/* Большой ФКадик, выглядывающий снизу */}
       <img src="/fcad.svg" alt="ФКад" style={{
-        position: 'absolute', bottom: -70, left: '50%',
-        width: 230, height: 'auto',
+        position: 'absolute', bottom: -40, left: '50%',
+        width: 280, height: 'auto',
         zIndex: 1, pointerEvents: 'none',
         filter: 'drop-shadow(0 -4px 24px rgba(123,110,246,0.35))',
         animation: 'mascotPeek 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both',
