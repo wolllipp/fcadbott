@@ -5,14 +5,16 @@ interface Props {
 }
 
 const STICKERS: { emoji: string; top?: string; bottom?: string; left?: string; right?: string; size: number; rotate: number; delay: number }[] = [
-  { emoji: '🎉', bottom: '34%', left: '8%', size: 30, rotate: -14, delay: 0 },
-  { emoji: '⭐', bottom: '40%', right: '10%', size: 26, rotate: 12, delay: 0.6 },
-  { emoji: '🎓', bottom: '22%', right: '6%', size: 32, rotate: 18, delay: 1.2 },
-  { emoji: '📚', bottom: '28%', left: '4%', size: 28, rotate: -10, delay: 0.9 },
-  { emoji: '🏆', bottom: '16%', left: '14%', size: 26, rotate: 8, delay: 0.3 },
-  { emoji: '🎯', bottom: '12%', right: '12%', size: 28, rotate: -12, delay: 1.5 },
-  { emoji: '💜', bottom: '8%', left: '22%', size: 24, rotate: -16, delay: 0.7 },
-  { emoji: '🚀', bottom: '6%', right: '20%', size: 30, rotate: 14, delay: 1.1 },
+  { emoji: '🎉', top: '6%', left: '7%', size: 30, rotate: -14, delay: 0 },
+  { emoji: '⭐', top: '5%', right: '9%', size: 26, rotate: 12, delay: 0.6 },
+  { emoji: '🎓', top: '22%', right: '5%', size: 32, rotate: 18, delay: 1.2 },
+  { emoji: '📚', top: '24%', left: '4%', size: 28, rotate: -10, delay: 0.9 },
+  { emoji: '🏆', top: '42%', left: '6%', size: 26, rotate: 8, delay: 0.3 },
+  { emoji: '🎯', top: '46%', right: '6%', size: 28, rotate: -12, delay: 1.5 },
+  { emoji: '💜', bottom: '34%', left: '12%', size: 24, rotate: -16, delay: 0.7 },
+  { emoji: '🚀', bottom: '30%', right: '11%', size: 30, rotate: 14, delay: 1.1 },
+  { emoji: '✨', bottom: '18%', left: '6%', size: 24, rotate: 10, delay: 1.3 },
+  { emoji: '📖', bottom: '14%', right: '7%', size: 26, rotate: -8, delay: 0.4 },
 ];
 
 export default function StudentLoginPage({ onLogin }: Props) {
