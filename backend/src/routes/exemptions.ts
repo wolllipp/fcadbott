@@ -254,6 +254,15 @@ router.post('/:id/toggle-exhibited', async (req: Request, res: Response) => {
       data: { isExhibited: !existing.isExhibited },
       include: { coordinator: true, students: { include: { student: true } } },
     });
+
+    if (!existing.isExhibited && exemption.isExhibited) {
+      try {
+        const { sendExemptionToStudent } = require('../services/bot');
+        await Promise.all(exemption.students
+          .filter((es) => es.student)
+          .map((es) => sendExemptionToStudent(exemption, es.student)));
+      } catch (e) { console.error('Exemption notification failed:', e); }
+    }
     res.json(exemption);
   } catch (err) {
     console.error(err);
@@ -273,17 +282,6 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
       data: { status: 'APPROVED' },
       include: { coordinator: true, students: { include: { student: true } } },
     });
-
-    // Notify students
-    try {
-      const { sendExemptionToStudent } = require('../services/bot');
-      for (const es of exemption.students) {
-        if (es.studentId) {
-          const student = await prisma.student.findUnique({ where: { id: es.studentId } });
-          if (student) sendExemptionToStudent(exemption, student);
-        }
-      }
-    } catch (_) {}
 
     await sendExemptionReport(exemption);
 

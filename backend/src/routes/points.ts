@@ -88,21 +88,12 @@ router.post('/', async (req: Request, res: Response) => {
     });
     const totalBalance = allTransactions.reduce((sum, t) => sum + t.points, 0);
 
-    if (totalBalance >= 100) {
-      try {
-        const student = await prisma.student.findUnique({ where: { id: studentId } });
-        if (student?.chatId) {
-          const { getBot } = require('../services/bot');
-          const bot = getBot();
-          if (bot) {
-            await bot.sendMessage(student.chatId,
-              `🎉 *Поздравляем! Вы набрали ${totalBalance} баллов!*\n━━━━━━━━━━━━━━━━━━━━\nВы можете подать ходатайство.\n\nОткройте приложение студсовета: @fcadbot\\_bot`,
-              { parse_mode: 'Markdown' }
-            );
-          }
-        }
-      } catch (_) {}
-    }
+    try {
+      const student = await prisma.student.findUnique({ where: { id: studentId } });
+      const { sendPointsAwarded, checkMilestone } = require('../services/bot');
+      await sendPointsAwarded(student, Number(points), reason, totalBalance);
+      await checkMilestone(studentId);
+    } catch (e) { console.error('Point notification failed:', e); }
 
     res.json(transaction);
   } catch (err) {
@@ -198,7 +189,16 @@ router.post('/bulk', async (req: Request, res: Response) => {
           authorId: authorId || null,
         },
       });
-      results.push(tx);
+       results.push(tx);
+
+       try {
+         const student = await prisma.student.findUnique({ where: { id: award.studentId } });
+         const balanceRows = await prisma.pointTransaction.findMany({ where: { studentId: award.studentId, status: 'ACTIVE' }, select: { points: true } });
+         const balance = balanceRows.reduce((sum, row) => sum + row.points, 0);
+         const { sendPointsAwarded, checkMilestone } = require('../services/bot');
+         await sendPointsAwarded(student, Number(award.points), award.reason, balance);
+         await checkMilestone(award.studentId);
+       } catch (e) { console.error('Bulk point notification failed:', e); }
     }
 
     res.json({ created: results.length, ids: results.map(r => r.id) });

@@ -145,6 +145,11 @@ router.post('/scan', async (req: Request, res: Response) => {
               authorId: coordinatorId,
             },
           });
+          const { sendPointsAwarded, checkMilestone } = await import('../services/bot');
+          const balanceRows = await prisma.pointTransaction.findMany({ where: { studentId: application.studentId, status: 'ACTIVE' }, select: { points: true } });
+          const balance = balanceRows.reduce((sum, row) => sum + row.points, 0);
+          await sendPointsAwarded(application.student, application.event.pointsForAttendance, `Посещение: ${application.event.name}`, balance);
+          await checkMilestone(application.studentId);
         }
       }
 
@@ -277,6 +282,11 @@ router.post('/manual-check', async (req: Request, res: Response) => {
               authorId: coordinatorId,
             },
           });
+          const { sendPointsAwarded, checkMilestone } = await import('../services/bot');
+          const balanceRows = await prisma.pointTransaction.findMany({ where: { studentId: application.studentId, status: 'ACTIVE' }, select: { points: true } });
+          const balance = balanceRows.reduce((sum, row) => sum + row.points, 0);
+          await sendPointsAwarded(application.student, application.event.pointsForAttendance, `Посещение: ${application.event.name}`, balance);
+          await checkMilestone(application.studentId);
         }
       }
 

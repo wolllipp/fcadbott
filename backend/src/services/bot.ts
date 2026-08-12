@@ -238,6 +238,10 @@ export async function sendNewEvent(event: any) {
   const audienceLabel: Record<string, string> = { SS: 'студсовета', FKP: 'ФКП', ALL: 'всех студентов' };
   const message =
     `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}${event.description ? `📝 ${event.description}\n` : ''}👥 Для: *${audienceLabel[event.audience] || 'всех'}*\n\n✍️ Записаться через приложение студсовета: @fcadbot\\_bot`;
+  const options = {
+    parse_mode: 'Markdown' as const,
+    reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть приложение и записаться', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] },
+  };
 
   try {
     let students;
@@ -257,7 +261,7 @@ export async function sendNewEvent(event: any) {
     for (const s of students) {
       if (s.chatId && !sent.has(s.chatId)) {
         sent.add(s.chatId);
-        try { await bot.sendMessage(s.chatId, message, { parse_mode: 'Markdown' }); } catch (_) {}
+        try { await bot.sendMessage(s.chatId, message, options); } catch (e) { console.error(`Event notification failed for ${s.chatId}:`, e); }
       }
     }
   } catch (e) { console.error(e); }
@@ -278,6 +282,17 @@ export async function sendExemptionToStudent(exemption: any, student: any) {
   const dateStr = new Date(exemption.exemptionDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const message = '✅ *Вам выставлено освобождение*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nОткройте приложение студсовета для просмотра: @fcadbot\\_bot';
   try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
+}
+
+export async function sendPointsAwarded(student: any, points: number, reason: string, balance: number) {
+  if (!bot || !student?.chatId) return;
+  const message = `⭐ *Вам начислены баллы*\n━━━━━━━━━━━━━━━━━━━━\n➕ Начислено: *${points}*\n📌 Причина: ${reason}\n💰 Текущий баланс: *${balance}*`;
+  try {
+    await bot.sendMessage(student.chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть приложение', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] },
+    });
+  } catch (e) { console.error(`Points notification failed for ${student.chatId}:`, e); }
 }
 
 export async function sendPetitionApproved(petition: any) {

@@ -91,11 +91,11 @@ export default function EventsPage({ coordinator }: Props) {
     }
   }
 
-  async function createEvent() {
+  async function createEvent(statusOverride?: string) {
     if (!newEvent.name || !newEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.create({ ...newEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: newEvent.scannerCoordinatorIds.length ? newEvent.scannerCoordinatorIds : [coordinator.id], scannerCoordinatorId: newEvent.scannerCoordinatorIds[0] || coordinator.id });
+      await api.events.create({ ...newEvent, status: statusOverride || newEvent.status, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: newEvent.scannerCoordinatorIds.length ? newEvent.scannerCoordinatorIds : [coordinator.id], scannerCoordinatorId: newEvent.scannerCoordinatorIds[0] || coordinator.id });
       setNewEvent({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] });
       setStep('list');
       await loadEvents();
@@ -382,10 +382,10 @@ export default function EventsPage({ coordinator }: Props) {
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               {step === 'create' ? (
                 <>
-                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setNewEvent({ ...newEvent, status: 'DRAFT' }); createEvent(); }} disabled={submitting}>
+                   <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => createEvent('DRAFT')} disabled={submitting}>
                     {submitting ? '...' : 'Сохранить черновик'}
                   </button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { setNewEvent({ ...newEvent, status: 'PUBLISHED' }); createEvent(); }} disabled={submitting || !(newEvent.name && newEvent.eventDate)}>
+                   <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => createEvent('PUBLISHED')} disabled={submitting || !(newEvent.name && newEvent.eventDate)}>
                     {submitting ? '...' : 'Опубликовать'}
                   </button>
                 </>
