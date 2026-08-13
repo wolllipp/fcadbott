@@ -826,14 +826,6 @@ export default function ExemptionsPage({ coordinator }: Props) {
                       style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>
                       Открыть
                     </button>
-                    <button onClick={() => toggleExhibited(ex.id)}
-                      style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
-                      Выставить
-                    </button>
-                    <button onClick={() => togglePrinted(ex.id)}
-                      style={{ background: ex.isPrinted ? 'var(--accent-dim)' : 'var(--bg-raised)', border: `1px solid ${ex.isPrinted ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: ex.isPrinted ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>
-                      {ex.isPrinted ? '✓ Распечатано' : '○ Распечатать'}
-                    </button>
                   </div>
                 </div>
               ))
