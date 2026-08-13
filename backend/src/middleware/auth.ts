@@ -47,11 +47,12 @@ export function requireApiAuth(req: Request, res: Response, next: NextFunction) 
     || req.path.startsWith('/auth/')
     || req.path.startsWith('/auth/avatar/')
     || req.path === '/bot-webhook';
-  if (publicRequest) return next();
 
   const user = parseCookie(req.headers.cookie);
+  if (user) req.authUser = user;
+
+  if (publicRequest) return next();
   if (!user) return res.status(401).json({ error: 'Требуется авторизация через Telegram' });
-  req.authUser = user;
 
   const claimedIds = [req.body?.coordinatorId, req.body?.creatorId, req.body?.authorId, req.body?.userId, req.query.coordinatorId]
     .filter((value) => value !== undefined && value !== null)
