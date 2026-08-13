@@ -126,7 +126,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
   const [selectedPetitionTypes, setSelectedPetitionTypes] = useState<Set<string>>(new Set());
   const [submittingPetition, setSubmittingPetition] = useState(false);
   const [petitions, setPetitions] = useState<PetitionData[]>([]);
-  const [myAttendedIds, setMyAttendedIds] = useState<number[]>([]);
 
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [balance, setBalance] = useState<BalanceData | null>(null);
@@ -158,10 +157,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
           e.participants.some((p: any) => p.fullName === student.fullName && p.groupNumber === student.groupNumber)
         );
         setMyEventIds(new Set(registered.map((e: EventData) => e.id)));
-        const attended = evts.filter((e: EventData) =>
-          e.participants.some((p: any) => p.fullName === student.fullName && p.groupNumber === student.groupNumber && p.attended && (e as any).attendanceFinalized)
-        );
-        setMyAttendedIds(attended.map((e: EventData) => e.id));
       } catch (_) {}
       setLoading(false);
     }
@@ -252,13 +247,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     if ((e as any).attendanceFinalized) return false;
     if (activeApplications.some((a) => a.eventId === e.id)) return false;
     return true;
-  });
-  const attendedEvents = events.filter((e) => myAttendedIds.includes(e.id) || checkedInApplications.some((a) => a.eventId === e.id));
-  const missedEvents = events.filter((e) => {
-    if (!myEventIds.has(e.id)) return false;
-    if (!(e as any).attendanceFinalized) return false;
-    const myP = e.participants.find((p: any) => p.fullName === student.fullName && p.groupNumber === student.groupNumber);
-    return myP && !myP.attended;
   });
 
   const hasActivePetition = petitions.some((p) => p.status === 'PENDING');
@@ -397,33 +385,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </>
             )}
 
-            {attendedEvents.length > 0 && (
-              <>
-                <div className="section-label" style={{ marginTop: upcomingEvents.length > 0 ? 16 : 0 }}>Посещённые</div>
-                {attendedEvents.map((ev) => (
-                  <div key={ev.id} className="card" style={{ borderColor: 'var(--success-dim)' }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{ev.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(ev.eventDate)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600, marginTop: 4 }}>✓ Был(а)</div>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {missedEvents.length > 0 && (
-              <>
-                <div className="section-label" style={{ marginTop: 16 }}>Пропущенные</div>
-                {missedEvents.map((ev) => (
-                  <div key={ev.id} className="card" style={{ borderColor: 'var(--error)' }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{ev.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(ev.eventDate)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--error)', fontWeight: 600, marginTop: 4 }}>✗ Не явился</div>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {availableEvents.length === 0 && applicationEvents.length === 0 && upcomingEvents.length === 0 && attendedEvents.length === 0 && missedEvents.length === 0 && (
+            {availableEvents.length === 0 && applicationEvents.length === 0 && upcomingEvents.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>
                 <div style={{ fontSize: 32, marginBottom: 12, color: 'var(--text-muted)' }}><IconAward size={32} /></div>
                 Нет мероприятий
