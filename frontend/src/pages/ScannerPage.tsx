@@ -80,6 +80,7 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
       const result = await api.attendance.scan({
         qrToken: scanInput.trim(),
         coordinatorId: coordinator.id,
+        eventId: selectedEvent || undefined,
         type: checkType,
       });
       setScanResult(result);
@@ -172,7 +173,7 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
   async function handleManualCheck(applicationId: number) {
     setProcessing(true);
     try {
-      await api.attendance.manualCheck({ applicationId, coordinatorId: coordinator.id, type: checkType });
+      await api.attendance.manualCheck({ applicationId, coordinatorId: coordinator.id, eventId: selectedEvent || undefined, type: checkType });
       setScanResult({ success: true, type: checkType, message: 'Отметка проставлена' });
       loadAttendees();
     } catch (e: any) {
@@ -322,7 +323,14 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
               )}
               <button className="btn btn-primary" disabled={processing || !scanInput.trim()}
                 onClick={handleScan} style={{ background: checkType === 'CHECK_IN' ? 'var(--success)' : 'var(--warning)' }}>
-                {processing ? '...' : checkType === 'CHECK_IN' ? '⬆ Отметить вход' : '⬇ Отметить выход'}
+                {processing ? '...' : (
+                  <>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      {checkType === 'CHECK_IN' ? <><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></> : <><path d="M12 5v14" /><path d="m18 13-6 6-6-6" /></>}
+                    </svg>
+                    {checkType === 'CHECK_IN' ? 'Отметить вход' : 'Отметить выход'}
+                  </>
+                )}
               </button>
             </div>
 

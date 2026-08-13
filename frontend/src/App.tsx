@@ -13,6 +13,7 @@ import PetitionsAdminPage from './pages/PetitionsAdminPage';
 import AdminStatsPage from './pages/AdminStatsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import ScannerPage from './pages/ScannerPage';
+import PointsAdminPage from './pages/PointsAdminPage';
 import NavBar from './components/NavBar';
 import LoadingScreen from './components/LoadingScreen';
 import AccessDenied from './components/AccessDenied';
@@ -24,7 +25,7 @@ declare global {
   }
 }
 
-export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'petitions' | 'stats' | 'applications' | 'scanner';
+export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'petitions' | 'stats' | 'applications' | 'scanner' | 'points';
 
 export interface Coordinator {
   id: number;
@@ -183,6 +184,7 @@ export default function App() {
         {tab === 'stats' && <AdminStatsPage coordinator={coordinator} />}
         {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}
         {tab === 'scanner' && <ScannerPage coordinator={coordinator} />}
+        {tab === 'points' && <PointsAdminPage coordinator={coordinator} />}
       </div>
       <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} pendingApplications={pendingApplications} />
     </div>

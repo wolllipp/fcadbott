@@ -70,7 +70,7 @@ router.get('/qr/:applicationId', async (req: Request, res: Response) => {
 
 router.post('/scan', async (req: Request, res: Response) => {
   try {
-    const { qrToken, coordinatorId, type } = req.body;
+    const { qrToken, coordinatorId, type, eventId } = req.body;
     if (!qrToken || !coordinatorId) {
       return res.status(400).json({ error: 'qrToken and coordinatorId required' });
     }
@@ -91,6 +91,7 @@ router.post('/scan', async (req: Request, res: Response) => {
     });
 
     if (!application) return res.status(404).json({ error: 'QR-код не распознан' });
+    if (eventId && application.eventId !== Number(eventId)) return res.status(400).json({ error: 'QR-код относится к другому мероприятию' });
     if (!(await canScan(application.event, Number(coordinatorId)))) return res.status(403).json({ error: 'Вы не назначены отмечающим на это мероприятие' });
     if (application.status !== 'APPROVED') return res.status(400).json({ error: 'Заявка не одобрена' });
     if (application.event.status === 'CANCELLED') return res.status(400).json({ error: 'Мероприятие отменено' });
@@ -141,10 +142,12 @@ router.post('/scan', async (req: Request, res: Response) => {
         data: { attended: true },
       });
 
-      const awardedPoints = application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance;
+      const isOrganizer = application.event.organizerAssignments.some((o) => o.studentId === application.studentId);
+      const awardedPoints = isOrganizer ? application.event.pointsForOrganization : application.event.pointsForAttendance;
+      const pointsType = isOrganizer ? 'ORGANIZATION' : 'ATTENDANCE';
       if (awardedPoints > 0) {
         const existingPoints = await prisma.pointTransaction.findFirst({
-          where: { studentId: application.studentId, eventId: application.eventId, type: 'ATTENDANCE', status: 'ACTIVE' },
+          where: { studentId: application.studentId, eventId: application.eventId, type: pointsType, status: 'ACTIVE' },
         });
 
         if (!existingPoints) {
@@ -152,7 +155,7 @@ router.post('/scan', async (req: Request, res: Response) => {
             data: {
               studentId: application.studentId,
               points: application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance,
-              type: 'ATTENDANCE',
+              type: pointsType,
               eventId: application.eventId,
               reason: `Посещение: ${application.event.name}`,
               authorId: coordinatorId,
@@ -227,7 +230,7 @@ router.get('/event/:eventId/attendees', async (req: Request, res: Response) => {
 
 router.post('/manual-check', async (req: Request, res: Response) => {
   try {
-    const { applicationId, coordinatorId, type } = req.body;
+    const { applicationId, coordinatorId, type, eventId } = req.body;
     if (!applicationId || !coordinatorId || !type) {
       return res.status(400).json({ error: 'applicationId, coordinatorId, and type required' });
     }
@@ -248,6 +251,7 @@ router.post('/manual-check', async (req: Request, res: Response) => {
     });
 
     if (!application) return res.status(404).json({ error: 'Application not found' });
+    if (eventId && application.eventId !== Number(eventId)) return res.status(400).json({ error: 'Заявка относится к другому мероприятию' });
     if (!(await canScan(application.event, Number(coordinatorId)))) return res.status(403).json({ error: 'Вы не назначены отмечающим на это мероприятие' });
     if (application.status !== 'APPROVED' && application.status !== 'ATTENDANCE_CONFIRMED') {
       return res.status(400).json({ error: 'Заявка в недопустимом статусе' });
@@ -285,10 +289,12 @@ router.post('/manual-check', async (req: Request, res: Response) => {
         data: { attended: true },
       });
 
-      const awardedPoints = application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance;
+      const isOrganizer = application.event.organizerAssignments.some((o) => o.studentId === application.studentId);
+      const awardedPoints = isOrganizer ? application.event.pointsForOrganization : application.event.pointsForAttendance;
+      const pointsType = isOrganizer ? 'ORGANIZATION' : 'ATTENDANCE';
       if (awardedPoints > 0) {
         const existingPoints = await prisma.pointTransaction.findFirst({
-          where: { studentId: application.studentId, eventId: application.eventId, type: 'ATTENDANCE', status: 'ACTIVE' },
+          where: { studentId: application.studentId, eventId: application.eventId, type: pointsType, status: 'ACTIVE' },
         });
 
         if (!existingPoints) {
@@ -296,7 +302,7 @@ router.post('/manual-check', async (req: Request, res: Response) => {
             data: {
               studentId: application.studentId,
               points: application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance,
-              type: 'ATTENDANCE',
+              type: pointsType,
               eventId: application.eventId,
               reason: `Посещение: ${application.event.name}`,
               authorId: coordinatorId,

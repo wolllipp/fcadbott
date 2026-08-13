@@ -32,6 +32,7 @@ function getTabList(coordinator: Coordinator): { id: Tab; icon: string; label: s
     { id: 'events', icon: '☰', label: 'Мероприятия' },
     { id: 'applications', icon: '▣', label: 'Заявки' },
     { id: 'scanner', icon: '⊙', label: 'Сканер' },
+    { id: 'points', icon: '＋', label: 'Доп. баллы' },
   ];
 
   if (isAdmin) {

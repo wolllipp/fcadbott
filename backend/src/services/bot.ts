@@ -328,7 +328,9 @@ export async function sendExemptionToStudent(exemption: any, student: any) {
 
 export async function sendPointsAwarded(student: any, points: number, reason: string, balance: number) {
   if (!bot || !student?.chatId) return;
-  const message = `⭐ *Вам начислены баллы*\n━━━━━━━━━━━━━━━━━━━━\n➕ Начислено: *${points}*\n📌 Причина: ${reason}\n💰 Текущий баланс: *${balance}*`;
+  const action = points >= 0 ? 'начислены' : 'сняты';
+  const sign = points >= 0 ? '+' : '';
+  const message = `⭐ *Вам ${action} баллы*\n━━━━━━━━━━━━━━━━━━━━\n➕ Изменение: *${sign}${points}*\n📌 Причина: ${reason}\n💰 Текущий баланс: *${balance}*`;
   try {
     await bot.sendMessage(student.chatId, message, {
       parse_mode: 'Markdown',

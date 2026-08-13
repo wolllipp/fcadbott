@@ -151,10 +151,10 @@ export const api = {
   },
   attendance: {
     getQr: (applicationId: number) => apiRequest(`/attendance/qr/${applicationId}`),
-    scan: (data: { qrToken: string; coordinatorId: number; type?: string }) =>
+    scan: (data: { qrToken: string; coordinatorId: number; eventId?: number; type?: string }) =>
       apiRequest('/attendance/scan', { method: 'POST', body: JSON.stringify(data) }),
     eventAttendees: (eventId: number) => apiRequest(`/attendance/event/${eventId}/attendees`),
-    manualCheck: (data: { applicationId: number; coordinatorId: number; type: string }) =>
+    manualCheck: (data: { applicationId: number; coordinatorId: number; eventId?: number; type: string }) =>
       apiRequest('/attendance/manual-check', { method: 'POST', body: JSON.stringify(data) }),
   },
 };
