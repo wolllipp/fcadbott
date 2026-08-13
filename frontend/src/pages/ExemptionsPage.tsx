@@ -189,6 +189,9 @@ export default function ExemptionsPage({ coordinator }: Props) {
     try {
       await api.exemptions.toggleExhibited(id, coordinator.role);
       await loadData();
+      const data = await api.exemptions.nonExhibited();
+      setNonExhibitedList(data);
+      setNonExhibitedCount(data.length);
     } catch (e: any) { alert(e.message); }
   }
 
@@ -196,6 +199,9 @@ export default function ExemptionsPage({ coordinator }: Props) {
     try {
       await api.exemptions.togglePrinted(id, coordinator.role);
       await loadData();
+      const data = await api.exemptions.nonExhibited();
+      setNonExhibitedList(data);
+      setNonExhibitedCount(data.length);
     } catch (e: any) { alert(e.message); }
   }
 
@@ -816,15 +822,15 @@ export default function ExemptionsPage({ coordinator }: Props) {
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{ex.coordinator.fullName}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{ex.reason}</div>
                    <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => { setSelectedDay(new Date(ex.exemptionDate)); setActiveTab('calendar'); setStep('calendar'); setShowBellModal(false); }}
+                    <button onClick={() => { setExemptions((current) => current.some((item) => item.id === ex.id) ? current : [...current, ex]); setDetailDay(new Date(ex.exemptionDate)); setShowBellModal(false); }}
                       style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>
                       Открыть
                     </button>
-                    <button onClick={() => { toggleExhibited(ex.id); setShowBellModal(false); }}
+                    <button onClick={() => toggleExhibited(ex.id)}
                       style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
                       Выставить
                     </button>
-                    <button onClick={() => { togglePrinted(ex.id); }}
+                    <button onClick={() => togglePrinted(ex.id)}
                       style={{ background: ex.isPrinted ? 'var(--accent-dim)' : 'var(--bg-raised)', border: `1px solid ${ex.isPrinted ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: ex.isPrinted ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>
                       {ex.isPrinted ? '✓ Распечатано' : '○ Распечатать'}
                     </button>
