@@ -10,6 +10,22 @@ function scannerIds(value: unknown, fallback: number): number[] {
   return [...new Set(ids.length ? ids : [fallback])];
 }
 
+async function ensureOrganizerParticipation(eventId: number, studentIds: number[]) {
+  for (const studentId of studentIds) {
+    const student = await prisma.student.findUnique({ where: { id: studentId }, select: { fullName: true, groupNumber: true } });
+    if (!student) continue;
+    await prisma.eventApplication.upsert({
+      where: { eventId_studentId: { eventId, studentId } },
+      update: { status: 'APPROVED', approvedAt: new Date(), cancelledAt: null },
+      create: { eventId, studentId, participationType: 'ORGANIZER', status: 'APPROVED', approvedAt: new Date() },
+    });
+    const participant = await prisma.eventParticipant.findFirst({ where: { eventId, fullName: student.fullName, groupNumber: student.groupNumber } });
+    if (!participant) {
+      await prisma.eventParticipant.create({ data: { eventId, fullName: student.fullName, groupNumber: student.groupNumber } });
+    }
+  }
+}
+
 
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -72,7 +88,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (event.status === 'PUBLISHED') {
       try { await sendNewEvent(event); } catch (_) {}
     }
-    try { const { notifyAssignedStudentScanners } = require('../services/bot'); await notifyAssignedStudentScanners(event.id); } catch (_) {}
+    try { const { notifyAssignedStudentScanners, notifyAssignedOrganizers } = require('../services/bot'); await notifyAssignedStudentScanners(event.id); await notifyAssignedOrganizers(event.id); } catch (_) {}
 
     res.json(event);
   } catch (err) {
@@ -144,12 +160,19 @@ router.put('/:id', async (req: Request, res: Response) => {
         organizerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
     });
+    if (assignedOrganizerIds) {
+      await prisma.eventApplication.updateMany({
+        where: { eventId: id, participationType: 'ORGANIZER', studentId: { notIn: assignedOrganizerIds } },
+        data: { status: 'CANCELLED', cancelledAt: new Date() },
+      });
+      await ensureOrganizerParticipation(id, assignedOrganizerIds);
+    }
 
     // Notify students when a draft becomes published
     if (existing.status !== 'PUBLISHED' && event.status === 'PUBLISHED') {
       try { await sendNewEvent(event); } catch (_) {}
     }
-    try { const { notifyAssignedStudentScanners } = require('../services/bot'); await notifyAssignedStudentScanners(event.id); } catch (_) {}
+    try { const { notifyAssignedStudentScanners, notifyAssignedOrganizers } = require('../services/bot'); await notifyAssignedStudentScanners(event.id); await notifyAssignedOrganizers(event.id); } catch (_) {}
 
     res.json(event);
   } catch (err) {

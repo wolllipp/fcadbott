@@ -291,6 +291,24 @@ export async function notifyAssignedStudentScanners(eventId: number) {
   }
 }
 
+export async function notifyAssignedOrganizers(eventId: number) {
+  if (!bot) return;
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: { organizerAssignments: { include: { student: true } } },
+  });
+  if (!event) return;
+  for (const assignment of event.organizerAssignments) {
+    if (!assignment.student.chatId) continue;
+    try {
+      await bot.sendMessage(assignment.student.chatId,
+        `🎯 *Вы назначены организатором*\n━━━━━━━━━━━━━━━━━━━━\nМероприятие: *${event.name}*\n📅 ${new Date(event.eventDate).toLocaleDateString('ru-RU')}\n⭐ Баллы за организацию: *${event.pointsForOrganization}*\n\nВам не нужно подавать заявку — вы уже допущены к мероприятию.`,
+        { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] } },
+      );
+    } catch (e) { console.error('Organizer notification failed:', e); }
+  }
+}
+
 
 
 async function getStudentChatIds(): Promise<string[]> {

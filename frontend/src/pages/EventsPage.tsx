@@ -347,7 +347,6 @@ export default function EventsPage({ coordinator }: Props) {
               {[
                 { id: 'ALL', label: 'Все студенты' },
                 { id: 'SS', label: 'Студсовет' },
-                { id: 'ORGANIZERS', label: 'Организаторы' },
               ].map(a => (
                 <button key={a.id} onClick={() => step === 'create' ? setNewEvent({ ...newEvent, audience: a.id }) : setEditingEvent({ ...editingEvent, audience: a.id })}
                   style={{
@@ -361,19 +360,17 @@ export default function EventsPage({ coordinator }: Props) {
               ))}
             </div>
             </Field>
-            {(step === 'create' ? newEvent.audience : editingEvent.audience) === 'ORGANIZERS' && (
+            {step === 'edit' && (
               <Field label="Организаторы мероприятия">
               <div className="scanner-picker">
                 {councilStudents.map(s => {
-                  const selected = (step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).includes(s.id);
+                  const selected = editingEvent.organizerStudentIds.includes(s.id);
                   return (
                     <button key={`org-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
                       onClick={() => {
-                        const current = step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds;
+                        const current = editingEvent.organizerStudentIds;
                         const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
-                        step === 'create'
-                          ? setNewEvent({ ...newEvent, organizerStudentIds: next })
-                          : setEditingEvent({ ...editingEvent, organizerStudentIds: next });
+                        setEditingEvent({ ...editingEvent, organizerStudentIds: next });
                       }}>
                       <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
                       <span>{s.fullName}</span>
@@ -392,13 +389,13 @@ export default function EventsPage({ coordinator }: Props) {
                 step === 'create' ? setNewEvent({ ...newEvent, pointsForAttendance: v }) : setEditingEvent({ ...editingEvent, pointsForAttendance: v });
               }} />
             </Field>
-            {(step === 'create' ? newEvent.audience : editingEvent.audience) === 'ORGANIZERS' && (
+            {step === 'edit' && editingEvent.organizerStudentIds.length > 0 && (
               <Field label="Баллы за организацию">
               <input className="input" type="number" min={0} placeholder="0"
-                value={step === 'create' ? newEvent.pointsForOrganization || '' : editingEvent.pointsForOrganization || ''}
+                value={editingEvent.pointsForOrganization || ''}
                 onChange={(e) => {
                   const v = parseInt(e.target.value) || 0;
-                  step === 'create' ? setNewEvent({ ...newEvent, pointsForOrganization: v }) : setEditingEvent({ ...editingEvent, pointsForOrganization: v });
+                  setEditingEvent({ ...editingEvent, pointsForOrganization: v });
                 }} />
               </Field>
             )}

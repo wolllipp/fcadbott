@@ -242,20 +242,21 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
 
   const activeApplications = applications.filter((a) => ['PENDING', 'APPROVED', 'AWAITING_MARK'].includes(a.status));
   const checkedInApplications = applications.filter((a) => a.status === 'ATTENDANCE_CONFIRMED');
+  const organizerEvents = events.filter((e) => ((e as any).organizerAssignments || []).some((a: any) => a.student?.id === student.id) && (e as any).status !== 'COMPLETED' && (e as any).status !== 'CANCELLED');
   const isScanner = events.some((e) => {
     if ((e as any).status === 'COMPLETED' || (e as any).status === 'CANCELLED') return false;
     return ((e as any).studentScannerAssignments || []).some((a: any) => a.student?.id === student.id);
   });
   const applicationEvents = events.filter((e) => {
     const app = activeApplications.find((a) => a.eventId === e.id);
-    return app && (e as any).status !== 'DRAFT';
+    return app && (e as any).status !== 'DRAFT' && !organizerEvents.some((organizerEvent) => organizerEvent.id === e.id);
   });
   const upcomingEvents = events.filter((e) => {
     if ((e as any).status === 'DRAFT') return false;
     if (new Date(e.eventDate) < new Date(new Date().setHours(0, 0, 0, 0))) return false;
     if (!myEventIds.has(e.id)) return false;
     if ((e as any).attendanceFinalized) return false;
-    if (activeApplications.some((a) => a.eventId === e.id)) return false;
+    if (activeApplications.some((a) => a.eventId === e.id) || organizerEvents.some((organizerEvent) => organizerEvent.id === e.id)) return false;
     return true;
   });
   const availableEvents = events.filter((e) => {
@@ -363,6 +364,20 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </>
             )}
 
+            {organizerEvents.length > 0 && (
+              <>
+                <div className="section-label" style={{ marginTop: availableEvents.length > 0 ? 16 : 0 }}>Организация</div>
+                {organizerEvents.map((ev) => (
+                  <div key={ev.id} className="card" style={{ animation: 'fadeIn 0.2s ease both', borderColor: 'var(--accent)' }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{ev.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{fmtDate(ev.eventDate)} {ev.location ? `· ${ev.location}` : ''}</div>
+                    <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>🎯 Вы организуете</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>Баллы за организацию: +{(ev as any).pointsForOrganization || 0}</div>
+                  </div>
+                ))}
+              </>
+            )}
+
             {applicationEvents.length > 0 && (
               <>
                 <div className="section-label" style={{ marginTop: availableEvents.length > 0 ? 16 : 0 }}>Мои заявки</div>
@@ -405,7 +420,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </>
             )}
 
-            {availableEvents.length === 0 && applicationEvents.length === 0 && upcomingEvents.length === 0 && (
+            {availableEvents.length === 0 && organizerEvents.length === 0 && applicationEvents.length === 0 && upcomingEvents.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>
                 <div style={{ fontSize: 32, marginBottom: 12, color: 'var(--text-muted)' }}><IconAward size={32} /></div>
                 Нет мероприятий
