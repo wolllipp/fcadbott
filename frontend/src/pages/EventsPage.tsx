@@ -360,25 +360,37 @@ export default function EventsPage({ coordinator }: Props) {
               ))}
             </div>
             </Field>
-            {step === 'edit' && (
-              <Field label="Организаторы мероприятия">
-              <div className="scanner-picker">
-                {councilStudents.map(s => {
-                  const selected = editingEvent.organizerStudentIds.includes(s.id);
-                  return (
-                    <button key={`org-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
-                      onClick={() => {
-                        const current = editingEvent.organizerStudentIds;
-                        const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
-                        setEditingEvent({ ...editingEvent, organizerStudentIds: next });
-                      }}>
-                      <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
-                      <span>{s.fullName}</span>
-                    </button>
-                  );
-                })}
-                <div className="scanner-picker-hint">Выберите студентов-организаторов</div>
-              </div>
+            <Field label="Организаторы мероприятия (необязательно)">
+            <div className="scanner-picker">
+              {councilStudents.map(s => {
+                const selected = (step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).includes(s.id);
+                return (
+                  <button key={`org-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
+                    onClick={() => {
+                      const current = step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds;
+                      const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
+                      step === 'create'
+                        ? setNewEvent({ ...newEvent, organizerStudentIds: next })
+                        : setEditingEvent({ ...editingEvent, organizerStudentIds: next });
+                    }}>
+                    <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
+                    <span>{s.fullName}</span>
+                  </button>
+                );
+              })}
+              <div className="scanner-picker-hint">Организаторам не нужно подавать заявку — они автоматически допускаются</div>
+            </div>
+            </Field>
+            {(step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).length > 0 && (
+              <Field label="Баллы за организацию">
+              <input className="input" type="number" min={0} placeholder="0"
+                value={step === 'create' ? newEvent.pointsForOrganization || '' : editingEvent.pointsForOrganization || ''}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value) || 0;
+                  step === 'create'
+                    ? setNewEvent({ ...newEvent, pointsForOrganization: v })
+                    : setEditingEvent({ ...editingEvent, pointsForOrganization: v });
+                }} />
               </Field>
             )}
             <Field label="Баллы за посещение">
@@ -389,16 +401,6 @@ export default function EventsPage({ coordinator }: Props) {
                 step === 'create' ? setNewEvent({ ...newEvent, pointsForAttendance: v }) : setEditingEvent({ ...editingEvent, pointsForAttendance: v });
               }} />
             </Field>
-            {step === 'edit' && editingEvent.organizerStudentIds.length > 0 && (
-              <Field label="Баллы за организацию">
-              <input className="input" type="number" min={0} placeholder="0"
-                value={editingEvent.pointsForOrganization || ''}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value) || 0;
-                  setEditingEvent({ ...editingEvent, pointsForOrganization: v });
-                }} />
-              </Field>
-            )}
             <Field label="Макс. участников">
             <input className="input" type="number" min={0} placeholder="Без ограничений"
               value={step === 'create' ? newEvent.maxParticipants || '' : editingEvent.maxParticipants || ''}

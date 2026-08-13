@@ -97,7 +97,7 @@ export async function sendEventReminders() {
 
       const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const message =
-        `⏰ *Напоминание о мероприятии*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Завтра, *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}\nНе забудьте прийти и отметиться по QR-коду!`;
+        `⏰ *Напоминание о мероприятии*\n\n📌 *${event.name}*\n📅 Завтра, *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}\nНе забудьте прийти и отметиться по QR-коду!`;
 
       const applications = await prisma.eventApplication.findMany({
         where: { eventId: event.id, status: { in: ['APPROVED', 'AWAITING_MARK'] } },
@@ -122,7 +122,7 @@ export async function sendExemptionPending(exemption: any) {
     `${i + 1}. ${es.student?.fullName || es.externalName} | ${es.student?.groupNumber || es.externalGroup}`
   ).join('\n');
   const message =
-    `📋 *Новая докладная на рассмотрении*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *${dateStr}*\n👤 Подал(а): *${exemption.coordinator.fullName}*\n📌 Причина: ${exemption.reason}\n👥 Студентов: *${exemption.students.length}*\n\n${students}\n\n⏳ Откройте приложение для подтверждения или отклонения`;
+    `📋 *Новая докладная на рассмотрении*\n\n📅 Дата: *${dateStr}*\n👤 Подал(а): *${exemption.coordinator.fullName}*\n📌 Причина: ${exemption.reason}\n👥 Студентов: *${exemption.students.length}*\n\n${students}\n\n⏳ Откройте приложение для подтверждения или отклонения`;
   const chatIds = await getChairmanChatIds();
   for (const chatId of chatIds) {
     try { await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
@@ -136,7 +136,7 @@ export async function sendExemptionReport(exemption: any) {
     `${i + 1}. ${es.student?.fullName || es.externalName} | ${es.student?.groupNumber || es.externalGroup}`
   ).join('\n');
   const message =
-    `✅ *ДОКЛАДНАЯ ЗАПИСКА ПОДТВЕРЖДЕНА*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *${dateStr}*\n👤 Выставил(а): *${exemption.coordinator.fullName}*\n📌 Причина: ${exemption.reason}\n\n*Освобождённые студенты:*\n${students}\n\n✅ Пропуски ${dateStr} считать по уважительной причине`;
+    `✅ *ДОКЛАДНАЯ ЗАПИСКА ПОДТВЕРЖДЕНА*\n\n📅 Дата: *${dateStr}*\n👤 Выставил(а): *${exemption.coordinator.fullName}*\n📌 Причина: ${exemption.reason}\n\n*Освобождённые студенты:*\n${students}\n\n✅ Пропуски ${dateStr} считать по уважительной причине`;
   let docBuffer: Buffer | null = null;
   try { docBuffer = await generateExemptionDoc(exemption); } catch (e) { console.error('docx error:', e); }
   const chatIds = [...await getChairmanChatIds(), ...await getSecretaryChatIds()];
@@ -159,7 +159,7 @@ export async function sendExemptionRejected(exemption: any, rejectReason?: strin
   const coordinator = await prisma.coordinator.findUnique({ where: { id: exemption.createdBy } });
   if (!coordinator?.chatId) return;
   const message =
-    `❌ *Докладная отклонена*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *${dateStr}*\n📌 Причина подачи: ${exemption.reason}` +
+    `❌ *Докладная отклонена*\n\n📅 Дата: *${dateStr}*\n📌 Причина подачи: ${exemption.reason}` +
     (rejectReason ? `\n\n💬 Причина отклонения: ${rejectReason}` : '') +
     `\n\nОбратитесь к председателю для уточнений.`;
   try { await bot.sendMessage(coordinator.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
@@ -171,7 +171,7 @@ export async function sendBonusNotification(submission: any) {
   const monthName = monthNames[submission.month];
   const total = submission.entries.reduce((s: number, e: any) => s + Number(e.amount), 0);
   const message =
-    `🏆 *Заявка на премирование*\n━━━━━━━━━━━━━━━━━━━━\n👤 ${submission.coordinator.fullName}\n📅 Месяц: *${monthName} ${submission.year}*\n👥 Студентов: *${submission.entries.length}*\n💰 Сумма: *${total} BYN*\n\n⏳ Ожидает подтверждения`;
+    `🏆 *Заявка на премирование*\n\n👤 ${submission.coordinator.fullName}\n📅 Месяц: *${monthName} ${submission.year}*\n👥 Студентов: *${submission.entries.length}*\n💰 Сумма: *${total} BYN*\n\n⏳ Ожидает подтверждения`;
   const chatIds = await getChairmanChatIds();
   for (const chatId of chatIds) { try { await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); } }
 }
@@ -185,7 +185,7 @@ export async function sendBonusReport(submission: any) {
   ).join('\n');
   const total = submission.entries.reduce((s: number, e: any) => s + Number(e.amount), 0);
   const message =
-    `✅ *Премии подтверждены*\n━━━━━━━━━━━━━━━━━━━━\n📅 ${monthName} ${submission.year}\n👤 ${submission.coordinator.fullName}\n\n${lines}\n\n💰 *Итого: ${total} BYN*`;
+    `✅ *Премии подтверждены*\n\n📅 ${monthName} ${submission.year}\n👤 ${submission.coordinator.fullName}\n\n${lines}\n\n💰 *Итого: ${total} BYN*`;
   const chatIds = [...await getChairmanChatIds(), ...await getSecretaryChatIds()];
   for (const chatId of [...new Set(chatIds)]) { try { await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); } }
 }
@@ -215,7 +215,7 @@ export async function sendPetitionPending(petition: any) {
     SPECIALIZATION: 'на профилизацию',
   };
   const message =
-    `📋 *Новое ходатайство*\n━━━━━━━━━━━━━━━━━━━━\n👤 Студент: *${petition.student.fullName}*\n📌 Тип: *${typeLabel[petition.type] || petition.type}*\n💰 Баллов: *${petition.balanceAtSubmit}*\n\n⏳ Откройте приложение для подтверждения или отклонения`;
+    `📋 *Новое ходатайство*\n\n👤 Студент: *${petition.student.fullName}*\n📌 Тип: *${typeLabel[petition.type] || petition.type}*\n💰 Баллов: *${petition.balanceAtSubmit}*\n\n⏳ Откройте приложение для подтверждения или отклонения`;
 
   try {
     const targets = await prisma.coordinator.findMany({
@@ -237,7 +237,7 @@ export async function sendNewEvent(event: any) {
   const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const audienceLabel: Record<string, string> = { SS: 'студсовета', FKP: 'ФКП', ALL: 'всех студентов', ORGANIZERS: 'организаторов' };
   const message =
-    `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}${event.description ? `📝 ${event.description}\n` : ''}👥 Для: *${audienceLabel[event.audience] || 'всех'}*\n\n✍️ Записаться через приложение студсовета: @fcadbot\\_bot`;
+    `🎉 *Новое мероприятие!*\n\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}${event.description ? `📝 ${event.description}\n` : ''}👥 Для: *${audienceLabel[event.audience] || 'всех'}*\n\n✍️ Записаться через приложение студсовета: @fcadbot\\_bot`;
   const options = {
     parse_mode: 'Markdown' as const,
     reply_markup: { inline_keyboard: [[{ text: '🚀 Открыть приложение и записаться', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] },
@@ -284,7 +284,7 @@ export async function notifyAssignedStudentScanners(eventId: number) {
     if (!assignment.student.chatId) continue;
     try {
       await bot.sendMessage(assignment.student.chatId,
-        `📷 *Вам назначено сканирование QR-кодов*\n━━━━━━━━━━━━━━━━━━━━\nМероприятие: *${event.name}*\n📅 ${new Date(event.eventDate).toLocaleDateString('ru-RU')}\n\nОткройте приложение — во вкладке появится «Сканер».`,
+        `📷 *Вам назначено сканирование QR-кодов*\n\nМероприятие: *${event.name}*\n📅 ${new Date(event.eventDate).toLocaleDateString('ru-RU')}\n\nОткройте приложение — во вкладке появится «Сканер».`,
         { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Открыть сканер', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] } },
       );
     } catch (e) { console.error('Scanner assignment notification failed:', e); }
@@ -302,7 +302,7 @@ export async function notifyAssignedOrganizers(eventId: number) {
     if (!assignment.student.chatId) continue;
     try {
       await bot.sendMessage(assignment.student.chatId,
-        `🎯 *Вы назначены организатором*\n━━━━━━━━━━━━━━━━━━━━\nМероприятие: *${event.name}*\n📅 ${new Date(event.eventDate).toLocaleDateString('ru-RU')}\n⭐ Баллы за организацию: *${event.pointsForOrganization}*\n\nВам не нужно подавать заявку — вы уже допущены к мероприятию.`,
+        `🎯 *Вы назначены организатором*\n\nМероприятие: *${event.name}*\n📅 ${new Date(event.eventDate).toLocaleDateString('ru-RU')}\n⭐ Баллы за организацию: *${event.pointsForOrganization}*\n\nВам не нужно подавать заявку — вы уже допущены к мероприятию.`,
         { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Открыть приложение', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] } },
       );
     } catch (e) { console.error('Organizer notification failed:', e); }
@@ -322,7 +322,7 @@ export async function sendExemptionToStudent(exemption: any, student: any) {
   if (!bot) return;
   if (!student.chatId) return;
   const dateStr = new Date(exemption.exemptionDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const message = '✅ *Хей, ваше освобождение выставлено!*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nПроверьте ИИС. Если освобождение не отображается, обратитесь к @wolllip.';
+  const message = '✅ *Хей, ваше освобождение выставлено!*\n\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nПроверьте ИИС. Если освобождение не отображается, обратитесь к @wolllip.';
   try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
@@ -330,7 +330,7 @@ export async function sendPointsAwarded(student: any, points: number, reason: st
   if (!bot || !student?.chatId) return;
   const action = points >= 0 ? 'начислены' : 'сняты';
   const sign = points >= 0 ? '+' : '';
-  const message = `⭐ *Вам ${action} баллы*\n━━━━━━━━━━━━━━━━━━━━\n➕ Изменение: *${sign}${points}*\n📌 Причина: ${reason}\n💰 Текущий баланс: *${balance}*`;
+  const message = `⭐ *Вам ${action} баллы*\n\n➕ Изменение: *${sign}${points}*\n📌 Причина: ${reason}\n💰 Текущий баланс: *${balance}*`;
   try {
     await bot.sendMessage(student.chatId, message, {
       parse_mode: 'Markdown',
@@ -348,13 +348,13 @@ export async function sendPetitionApproved(petition: any) {
     SPECIALIZATION: 'на профилизацию',
   };
   const typeName = typeLabel[petition.type] || petition.type;
-  const message = '✅ *Ходатайство ' + typeName + ' одобрено!*\n━━━━━━━━━━━━━━━━━━━━\nРаспечатайте и подпишите в каб. 306-2.\n\nСкачать .docx можно в приложении: @fcadbot\\_bot';
+  const message = '✅ *Ходатайство ' + typeName + ' одобрено!*\n\nРаспечатайте и подпишите в каб. 306-2.\n\nСкачать .docx можно в приложении: @fcadbot\\_bot';
   try { await bot.sendMessage(petition.student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
 export async function sendPetitionDownloaded(petition: any) {
   if (!bot || !petition.student?.chatId) return;
-  const message = `📥 *Ходатайство скачано*\n━━━━━━━━━━━━━━━━━━━━\nСтудент: *${petition.student.fullName}*\nТип: *${petition.type}*\n\nДокумент был скачан из приложения.`;
+  const message = `📥 *Ходатайство скачано*\n\nСтудент: *${petition.student.fullName}*\nТип: *${petition.type}*\n\nДокумент был скачан из приложения.`;
   try { await bot.sendMessage(petition.student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
@@ -362,7 +362,7 @@ export async function sendAttendanceMarked(student: any, eventName: string, even
   if (!bot) return;
   if (!student.chatId) return;
   const dateStr = eventDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const message = '✅ *Отмечено посещение*\n━━━━━━━━━━━━━━━━━━━━\n🎭 Мероприятие: *' + eventName + '*\n📅 Дата: *' + dateStr + '*\n\nВаше присутствие подтверждено.';
+  const message = '✅ *Отмечено посещение*\n\n🎭 Мероприятие: *' + eventName + '*\n📅 Дата: *' + dateStr + '*\n\nВаше присутствие подтверждено.';
   try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 
@@ -381,7 +381,7 @@ export async function checkMilestone(studentId: number) {
       where: { studentId, status: { in: ['PENDING', 'DRAFT'] } },
     });
     if (!hasActive) {
-      const message = '🎉 *Поздравляем! Вы набрали ' + balance + ' баллов!*\n━━━━━━━━━━━━━━━━━━━━\nВы можете подать ходатайство.\n\nОткройте приложение студсовета: @fcadbot\\_bot';
+      const message = '🎉 *Поздравляем! Вы набрали ' + balance + ' баллов!*\n\nВы можете подать ходатайство.\n\nОткройте приложение студсовета: @fcadbot\\_bot';
       try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
     }
   }
