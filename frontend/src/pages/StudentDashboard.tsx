@@ -241,7 +241,10 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
 
   const activeApplications = applications.filter((a) => ['PENDING', 'APPROVED', 'AWAITING_MARK'].includes(a.status));
   const checkedInApplications = applications.filter((a) => a.status === 'ATTENDANCE_CONFIRMED');
-  const isScanner = events.some((e) => ((e as any).studentScannerAssignments || []).some((a: any) => a.student?.id === student.id));
+  const isScanner = events.some((e) => {
+    if ((e as any).status === 'COMPLETED' || (e as any).status === 'CANCELLED') return false;
+    return ((e as any).studentScannerAssignments || []).some((a: any) => a.student?.id === student.id);
+  });
   const applicationEvents = events.filter((e) => {
     const app = activeApplications.find((a) => a.eventId === e.id);
     return app && (e as any).status !== 'DRAFT';
@@ -276,7 +279,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: '16px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <div style={{
             width: 48, height: 48, borderRadius: '50%',
