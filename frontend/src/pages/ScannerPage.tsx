@@ -33,7 +33,7 @@ interface EventOption {
 export default function ScannerPage({ coordinator }: { coordinator: Coordinator }) {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
-  const [mode, setMode] = useState<'scan' | 'attendees' | 'manual'>('scan');
+  const [mode, setMode] = useState<'scan' | 'attendees'>('scan');
   const [checkType, setCheckType] = useState<'CHECK_IN' | 'CHECK_OUT'>('CHECK_IN');
   const [manualQuery, setManualQuery] = useState('');
   const [manualResults, setManualResults] = useState<any[]>([]);
@@ -233,7 +233,6 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
           {([
             { id: 'scan' as const, label: 'Сканировать' },
             { id: 'attendees' as const, label: `Участники (${attendeesStats.total})` },
-            { id: 'manual' as const, label: 'Поиск' },
           ]).map(m => (
             <button key={m.id} onClick={() => { setMode(m.id); setScanResult(null); }}
               style={{
@@ -375,39 +374,6 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
           </div>
         )}
 
-        {mode === 'manual' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input className="input" placeholder="ФИО или группа..." value={manualQuery}
-                onChange={e => setManualQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleManualSearch(); }} />
-              <button className="btn btn-primary" onClick={handleManualSearch}
-                style={{ width: 'auto', padding: '12px 20px', flexShrink: 0 }}>Найти</button>
-            </div>
-            {manualResults.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {manualResults.map((a: any) => (
-                  <div key={a.id} className="card" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{a.student.fullName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                        гр. {a.student.groupNumber} · {a.checkedIn ? '✓ Вход' : '○ Нет входа'}
-                      </div>
-                    </div>
-                    <button onClick={() => handleManualCheck(a.id)} disabled={processing}
-                      style={{
-                        padding: '8px 14px', borderRadius: 8, border: 'none',
-                        background: checkType === 'CHECK_IN' ? 'var(--success)' : 'var(--warning)',
-                        color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      }}>
-                      {processing ? '...' : checkType === 'CHECK_IN' ? '↑ Вход' : '↓ Выход'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

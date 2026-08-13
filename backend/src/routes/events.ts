@@ -67,6 +67,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (event.status === 'PUBLISHED') {
       try { await sendNewEvent(event); } catch (_) {}
     }
+    try { const { notifyAssignedStudentScanners } = require('../services/bot'); await notifyAssignedStudentScanners(event.id); } catch (_) {}
 
     res.json(event);
   } catch (err) {
@@ -132,6 +133,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (existing.status !== 'PUBLISHED' && event.status === 'PUBLISHED') {
       try { await sendNewEvent(event); } catch (_) {}
     }
+    try { const { notifyAssignedStudentScanners } = require('../services/bot'); await notifyAssignedStudentScanners(event.id); } catch (_) {}
 
     res.json(event);
   } catch (err) {

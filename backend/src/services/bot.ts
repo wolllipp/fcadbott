@@ -267,6 +267,24 @@ export async function sendNewEvent(event: any) {
   } catch (e) { console.error(e); }
 }
 
+export async function notifyAssignedStudentScanners(eventId: number) {
+  if (!bot) return;
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: { studentScannerAssignments: { include: { student: true } } },
+  });
+  if (!event) return;
+  for (const assignment of event.studentScannerAssignments) {
+    if (!assignment.student.chatId) continue;
+    try {
+      await bot.sendMessage(assignment.student.chatId,
+        `📷 *Вам назначено сканирование QR-кодов*\n━━━━━━━━━━━━━━━━━━━━\nМероприятие: *${event.name}*\n📅 ${new Date(event.eventDate).toLocaleDateString('ru-RU')}\n\nОткройте приложение — во вкладке появится «Сканер».`,
+        { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Открыть сканер', web_app: { url: process.env.WEBAPP_URL || 'https://fcadbot.site' } }]] } },
+      );
+    } catch (e) { console.error('Scanner assignment notification failed:', e); }
+  }
+}
+
 
 
 async function getStudentChatIds(): Promise<string[]> {
@@ -280,7 +298,7 @@ export async function sendExemptionToStudent(exemption: any, student: any) {
   if (!bot) return;
   if (!student.chatId) return;
   const dateStr = new Date(exemption.exemptionDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const message = '✅ *Вам выставлено освобождение*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nОткройте приложение студсовета для просмотра: @fcadbot\\_bot';
+  const message = '✅ *Хей, ваше освобождение выставлено!*\n━━━━━━━━━━━━━━━━━━━━\n📅 Дата: *' + dateStr + '*\n📌 Причина: ' + exemption.reason + '\n👤 Выставил(а): *' + exemption.coordinator.fullName + '*\n\nПроверьте ИИС. Если освобождение не отображается, обратитесь к @wolllip.';
   try { await bot.sendMessage(student.chatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
 }
 

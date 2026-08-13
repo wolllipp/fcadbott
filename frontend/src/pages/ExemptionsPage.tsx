@@ -815,7 +815,11 @@ export default function ExemptionsPage({ coordinator }: Props) {
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>{fmtDate(ex.exemptionDate)}</div>
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{ex.coordinator.fullName}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{ex.reason}</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => { setSelectedDay(new Date(ex.exemptionDate)); setActiveTab('calendar'); setStep('calendar'); setShowBellModal(false); }}
+                      style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>
+                      Открыть
+                    </button>
                     <button onClick={() => { toggleExhibited(ex.id); setShowBellModal(false); }}
                       style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
                       Выставить

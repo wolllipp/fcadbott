@@ -262,7 +262,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
   });
 
   const hasActivePetition = petitions.some((p) => p.status === 'PENDING');
-  const lastApprovedPetition = petitions.find((p) => p.status === 'APPROVED');
 
   const myApps = applications.filter(a => a.status !== 'CANCELLED');
   const pendingApps = myApps.filter(a => a.status === 'PENDING');
@@ -431,43 +430,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </div>
             )}
 
-            {lastApprovedPetition && (
-              <div className="card" style={{ marginTop: 8, borderColor: 'var(--accent)', background: 'var(--accent-dim)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>
-                      Ходатайство {PETITION_LABELS[lastApprovedPetition.type]} одобрено
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                      Распечатай и подпиши в 306-2
-                    </div>
-                  </div>
-                  <button className="btn btn-ghost" onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = api.petitions.downloadUrl(lastApprovedPetition.id);
-                    a.download = 'Ходатайство.docx';
-                    a.click();
-                  }} style={{ padding: '8px 14px', fontSize: 13, color: 'var(--accent)', borderColor: 'var(--accent)', width: 'auto', flexShrink: 0 }}>
-                    Скачать .docx
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div style={{ height: 8 }} />
-            {balance && balance.balance >= 100 && !hasActivePetition ? (
-              <button className="btn btn-primary" onClick={() => setShowPetitionModal(true)} style={{ marginTop: 4, background: 'var(--success)' }}>
-                Подать ходатайство ({balance.balance} баллов)
-              </button>
-            ) : hasActivePetition ? (
-              <div style={{ textAlign: 'center', padding: 12, color: 'var(--warning)', fontSize: 13, fontWeight: 600 }}>
-                Ходатайство на рассмотрении
-              </div>
-            ) : balance && balance.balance < 100 ? (
-              <div style={{ textAlign: 'center', padding: 12, color: 'var(--text-muted)', fontSize: 13 }}>
-                Нужно набрать 100 баллов для ходатайства (сейчас: {balance.balance})
-              </div>
-            ) : null}
           </div>
         )}
 
