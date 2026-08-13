@@ -129,7 +129,7 @@ export default function ApplicationsPage({ coordinator }: { coordinator: Coordin
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 16px 0' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Заявки</h1>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, padding: '4px 0 10px', overflowX: 'auto' }}>
           {([
             { id: 'PENDING' as FilterStatus, label: `Ожидают (${pendingCount})` },
             { id: 'ALL' as FilterStatus, label: 'Все' },

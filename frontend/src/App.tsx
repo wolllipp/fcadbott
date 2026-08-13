@@ -46,6 +46,7 @@ export default function App() {
   const [denied, setDenied] = useState(false);
   const [tab, setTab] = useState<Tab>('home');
   const [pendingPetitions, setPendingPetitions] = useState(0);
+  const [pendingApplications, setPendingApplications] = useState(0);
 
   const isAdmin = coordinator?.role === 'CHAIRMAN' || coordinator?.role === 'DEPUTY' || coordinator?.role === 'DEAN' || coordinator?.role === 'SECRETARY';
 
@@ -121,6 +122,20 @@ export default function App() {
     return () => clearInterval(iv);
   }, []);
 
+  useEffect(() => {
+    if (!coordinator) return;
+    async function fetchPendingApplications() {
+      try {
+        const params = coordinator.role === 'COORDINATOR' ? `?role=COORDINATOR&coordinatorId=${coordinator.id}` : '';
+        const data = await fetch(`/api/applications${params}`).then((res) => res.json());
+        setPendingApplications(Array.isArray(data) ? data.filter((a: any) => a.status === 'PENDING').length : 0);
+      } catch (_) {}
+    }
+    fetchPendingApplications();
+    const interval = setInterval(fetchPendingApplications, 30000);
+    return () => clearInterval(interval);
+  }, [coordinator]);
+
   function handleStudentLogin(s: any) {
     setStudent(s);
     setDenied(false);
@@ -169,7 +184,7 @@ export default function App() {
         {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}
         {tab === 'scanner' && <ScannerPage coordinator={coordinator} />}
       </div>
-      <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} />
+      <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} pendingApplications={pendingApplications} />
     </div>
   );
 }

@@ -3,6 +3,17 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+async function ensureEventParticipant(application: { eventId: number; student: { fullName: string; groupNumber: string } }) {
+  const existing = await prisma.eventParticipant.findFirst({
+    where: { eventId: application.eventId, fullName: application.student.fullName, groupNumber: application.student.groupNumber },
+  });
+  if (!existing) {
+    await prisma.eventParticipant.create({
+      data: { eventId: application.eventId, fullName: application.student.fullName, groupNumber: application.student.groupNumber },
+    });
+  }
+}
+
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { eventId, studentId, status, role } = req.query;
@@ -194,6 +205,7 @@ router.put('/:id/approve', async (req: Request, res: Response) => {
       },
       include: { event: true, student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } } },
     });
+    await ensureEventParticipant(updated);
 
     if (updated.student.chatId && application.event.name) {
       try {
@@ -309,6 +321,8 @@ router.put('/bulk-approve', async (req: Request, res: Response) => {
           where: { id },
           data: { status: 'APPROVED', approvedById: coordinatorId || null, approvedAt: new Date() },
         });
+        const student = await prisma.student.findUnique({ where: { id: application.studentId }, select: { fullName: true, groupNumber: true } });
+        if (student) await ensureEventParticipant({ eventId: application.eventId, student });
         results.push(updated);
       } catch (_) {}
     }

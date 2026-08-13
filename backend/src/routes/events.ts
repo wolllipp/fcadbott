@@ -303,6 +303,11 @@ router.post('/:id/generate-exemption', async (req: Request, res: Response) => {
       include: { coordinator: true, students: { include: { student: true } } },
     });
 
+    await prisma.event.update({
+      where: { id: eventId },
+      data: { status: 'COMPLETED', attendanceFinalized: true },
+    });
+
     const { sendExemptionPending } = require('../services/bot');
     await sendExemptionPending(exemption);
 

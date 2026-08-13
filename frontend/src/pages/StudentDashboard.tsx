@@ -300,10 +300,11 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>гр. {student.groupNumber}</div>
           </div>
         </div>
-        <button onClick={onLogout}
-          style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12 }}>
-          Выйти
-        </button>
+        <div title={`Баллы: ${balance?.balance || 0}`} style={{ width: 46, height: 46, borderRadius: '50%', background: `conic-gradient(var(--accent) ${Math.min(100, balance?.balance || 0)}%, var(--bg-raised) 0)`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card)', display: 'grid', placeItems: 'center', color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>
+            {balance?.balance || 0}
+          </div>
+        </div>
       </div>
 
       <div className="tab-row" style={{ padding: '16px 16px 0' }}>
@@ -322,9 +323,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               fontWeight: 600, fontSize: 13, cursor: 'pointer',
             }}>
             {t.label}
-            {t.id === 'activity' && balance && balance.balance > 0 && (
-              <span style={{ marginLeft: 4, fontSize: 11, opacity: 0.8 }}>{balance.balance} б.</span>
-            )}
           </button>
         ))}
       </div>

@@ -135,6 +135,10 @@ router.post('/scan', async (req: Request, res: Response) => {
         where: { id: application.id },
         data: { checkedOut: true, checkOutTime: new Date(), status: 'ATTENDANCE_CONFIRMED' },
       });
+      await prisma.eventParticipant.updateMany({
+        where: { eventId: application.eventId, fullName: application.student.fullName, groupNumber: application.student.groupNumber },
+        data: { attended: true },
+      });
 
       if (application.event.pointsForAttendance > 0) {
         const existingPoints = await prisma.pointTransaction.findFirst({
@@ -272,6 +276,10 @@ router.post('/manual-check', async (req: Request, res: Response) => {
       await prisma.eventApplication.update({
         where: { id: application.id },
         data: { checkedOut: true, checkOutTime: new Date(), status: 'ATTENDANCE_CONFIRMED' },
+      });
+      await prisma.eventParticipant.updateMany({
+        where: { eventId: application.eventId, fullName: application.student.fullName, groupNumber: application.student.groupNumber },
+        data: { attended: true },
       });
 
       if (application.event.pointsForAttendance > 0) {

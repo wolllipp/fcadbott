@@ -50,10 +50,10 @@ export default function ScannerPage({ coordinator }: { coordinator: Coordinator 
   useEffect(() => {
     api.events.list().then((data: any[]) => {
       const active = data.filter((e: any) => {
-        if (e.status === 'CANCELLED') return false;
+        if (e.status === 'CANCELLED' || e.status === 'COMPLETED') return false;
         const isAdmin = ['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator.role);
         if (isAdmin) return true;
-        return e.createdBy === coordinator.id || (e.scannerAssignments || []).some((a: any) => a.coordinator?.id === coordinator.id) || (e.scannerCoordinator && e.scannerCoordinator.id === coordinator.id);
+        return e.createdBy === coordinator.id || (e.scannerAssignments || []).some((a: any) => a.coordinator?.id === coordinator.id) || (e.studentScannerAssignments || []).some((a: any) => a.student?.id === coordinator.id) || (e.scannerCoordinator && e.scannerCoordinator.id === coordinator.id);
       });
       setEvents(active);
     }).catch(() => {});

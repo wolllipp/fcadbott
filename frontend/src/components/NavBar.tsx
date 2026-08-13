@@ -6,6 +6,7 @@ interface Props {
   onChange: (tab: Tab) => void;
   coordinator: Coordinator;
   pendingPetitions?: number;
+  pendingApplications?: number;
 }
 
 const menuAnim = `
@@ -25,7 +26,7 @@ function getTabList(coordinator: Coordinator): { id: Tab; icon: string; label: s
 
   const tabs: { id: Tab; icon: string; label: string }[] = [
     { id: 'home', icon: '⌂', label: 'Главная' },
-    { id: 'sector', icon: '👥', label: 'Люди' },
+    { id: 'sector', icon: '◉', label: 'Люди' },
     { id: 'exemptions', icon: '◎', label: 'Освобождения' },
     { id: 'bonuses', icon: '◇', label: 'Премии' },
     { id: 'events', icon: '☰', label: 'Мероприятия' },
@@ -45,7 +46,7 @@ function findTab(tabs: { id: Tab; icon: string; label: string }[], id: Tab) {
   return tabs.find(t => t.id === id);
 }
 
-export default function NavBar({ active, onChange, coordinator, pendingPetitions = 0 }: Props) {
+export default function NavBar({ active, onChange, coordinator, pendingPetitions = 0, pendingApplications = 0 }: Props) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +105,11 @@ export default function NavBar({ active, onChange, coordinator, pendingPetitions
               <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{t.icon}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {t.label}
+                {t.id === 'applications' && pendingApplications > 0 && (
+                  <span style={{ background: 'var(--error)', color: '#fff', fontSize: 10, fontWeight: 700, minWidth: 17, height: 17, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                    {pendingApplications}
+                  </span>
+                )}
                 {t.id === 'petitions' && pendingPetitions > 0 && (
                   <span style={{
                     background: 'var(--accent)',

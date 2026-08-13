@@ -263,6 +263,20 @@ html, body, #root {
   text-align: left;
   cursor: pointer;
 }
+.scanner-picker-group {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
 .scanner-picker-option.selected {
   border-color: var(--accent);
   background: var(--accent-dim);

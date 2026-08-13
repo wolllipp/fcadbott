@@ -63,8 +63,16 @@ export default function EventsPage({ coordinator }: Props) {
   const [selectedExternalIndices, setSelectedExternalIndices] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [coordinatorsList, setCoordinatorsList] = useState<{ id: number; fullName: string; telegramUsername: string; role: string }[]>([]);
+  const [showCoordinatorScanners, setShowCoordinatorScanners] = useState(false);
+  const [showStudentScanners, setShowStudentScanners] = useState(false);
 
-  useEffect(() => { loadEvents(); api.events.coordinators().then(setCoordinatorsList).catch(() => {}); }, []);
+  useEffect(() => {
+    loadEvents();
+    api.events.coordinators().then(setCoordinatorsList).catch(() => {});
+    api.council.students.list().then(setCouncilStudents).catch(() => {});
+    const interval = setInterval(loadEvents, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('extParticipants', JSON.stringify(externalParticipants));
@@ -229,6 +237,8 @@ export default function EventsPage({ coordinator }: Props) {
 
   const isAdmin = !['COORDINATOR'].includes(coordinator.role);
   const attendedCount = selectedEvent?.participants.filter((p) => p.attended).length || 0;
+  const activeEvents = events.filter((event) => (event as any).status !== 'COMPLETED');
+  const completedEvents = events.filter((event) => (event as any).status === 'COMPLETED');
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -258,8 +268,16 @@ export default function EventsPage({ coordinator }: Props) {
                 Мероприятий пока нет
               </div>
             ) : (
-              events.map((ev, i) => (
-                <div key={ev.id} className="card" style={{ marginBottom: 10, cursor: 'pointer', animation: `fadeIn 0.25s ease ${i * 0.04}s both` }}
+               [...activeEvents, ...completedEvents].map((ev, i) => (
+                 <React.Fragment key={ev.id}>
+                 {i === activeEvents.length && completedEvents.length > 0 && (
+                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 12px', color: 'var(--text-muted)', fontSize: 12 }}>
+                     <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                     Завершённые
+                     <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                   </div>
+                 )}
+                 <div className="card" style={{ marginBottom: 10, cursor: 'pointer', opacity: (ev as any).status === 'COMPLETED' ? 0.72 : 1, animation: `fadeIn 0.25s ease ${i * 0.04}s both` }}
                   onClick={() => { setSelectedEvent(ev); setStep('detail'); }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                     <div style={{ fontWeight: 700, fontSize: 17 }}>{ev.name}</div>
@@ -295,8 +313,9 @@ export default function EventsPage({ coordinator }: Props) {
                       </button>
                     </div>
                   )}
-                </div>
-              ))
+                 </div>
+                 </React.Fragment>
+               ))
             )}
           </>
         )}
@@ -360,8 +379,8 @@ export default function EventsPage({ coordinator }: Props) {
             </Field>
             <Field label="Отмечающий на мероприятии">
             <div className="scanner-picker">
-              <div className="section-label" style={{ marginBottom: 4 }}>Координаторы</div>
-              {coordinatorsList.map(c => {
+              <button type="button" className="scanner-picker-group" onClick={() => setShowCoordinatorScanners(!showCoordinatorScanners)}>Координаторы <span>{showCoordinatorScanners ? '▾' : '▸'}</span></button>
+              {showCoordinatorScanners && coordinatorsList.map(c => {
                 const selected = (step === 'create' ? newEvent.scannerCoordinatorIds : editingEvent.scannerCoordinatorIds).includes(c.id);
                 return (
                   <button key={`coord-${c.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
@@ -377,8 +396,8 @@ export default function EventsPage({ coordinator }: Props) {
                   </button>
                 );
               })}
-              <div className="section-label" style={{ marginBottom: 4, marginTop: 8 }}>Студенты</div>
-              {councilStudents.map(s => {
+              <button type="button" className="scanner-picker-group" onClick={() => setShowStudentScanners(!showStudentScanners)}>Студенты <span>{showStudentScanners ? '▾' : '▸'}</span></button>
+              {showStudentScanners && councilStudents.map(s => {
                 const selected = (step === 'create' ? newEvent.studentScannerIds : editingEvent.studentScannerIds).includes(s.id);
                 return (
                   <button key={`stud-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
