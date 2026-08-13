@@ -112,22 +112,16 @@ router.post('/verify', async (req: Request, res: Response) => {
 router.post('/student-register', async (req: Request, res: Response) => {
   try {
     const { fullName, studentCardNumber, telegramUsername, groupNumber, budgetStatus, initData } = req.body;
-    if (!fullName || !telegramUsername || !groupNumber) {
-      return res.status(400).json({ error: 'fullName, groupNumber и telegramUsername обязательны' });
+    if (!fullName || !studentCardNumber || !telegramUsername || !groupNumber) {
+      return res.status(400).json({ error: 'fullName, studentCardNumber, groupNumber и telegramUsername обязательны' });
     }
 
-    let student = await prisma.student.findFirst({
-      where: { fullName, studentCardNumber: studentCardNumber || '' },
+    const student = await prisma.student.findFirst({
+      where: { fullName, studentCardNumber },
     });
 
-    if (!student && studentCardNumber) {
-      student = await prisma.student.findFirst({
-        where: { fullName },
-      });
-    }
-
     if (!student) {
-      return res.status(404).json({ error: 'Студент с таким ФИО не найден. Проверьте ФИО или обратитесь к студсовету.' });
+      return res.status(404).json({ error: 'ФИО и номер студенческого не совпадают. Проверьте данные или обратитесь к студсовету.' });
     }
 
     if (student.telegramUsername) {
@@ -151,7 +145,6 @@ router.post('/student-register', async (req: Request, res: Response) => {
         telegramUsername: telegramUsername.replace('@', ''),
         groupNumber: groupNumber || student.groupNumber,
         budgetStatus: budgetStatus || student.budgetStatus,
-        ...(studentCardNumber && !student.studentCardNumber && { studentCardNumber }),
         ...(chatId && { chatId }),
         ...(photoUrl && { photoUrl }),
       },

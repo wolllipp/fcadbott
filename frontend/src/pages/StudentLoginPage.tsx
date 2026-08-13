@@ -120,7 +120,7 @@ export default function StudentLoginPage({ onLogin }: Props) {
               onChange={(e) => setFullName(e.target.value)} />
             <input className="input" placeholder="Номер группы (напр. 518101)" value={groupNumber}
               onChange={(e) => setGroupNumber(e.target.value)} />
-            <input className="input" placeholder="Номер студенческого билета (необязательно)" value={studentCardNumber}
+            <input className="input" placeholder="Номер студенческого билета" value={studentCardNumber}
               onChange={(e) => setStudentCardNumber(e.target.value)} />
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={() => setBudgetStatus('BUDGET')}
@@ -159,7 +159,7 @@ export default function StudentLoginPage({ onLogin }: Props) {
               </span>
             </label>
             {error && <div style={{ color: 'var(--error)', fontSize: 13, textAlign: 'center' }}>{error}</div>}
-            <button className="btn btn-primary" disabled={loading || !fullName || !telegramUsername || !groupNumber || !agreed} type="submit">
+            <button className="btn btn-primary" disabled={loading || !fullName || !studentCardNumber || !telegramUsername || !groupNumber || !agreed} type="submit">
               {loading ? '...' : 'Зарегистрироваться'}
             </button>
             <button onClick={() => { setMode('login'); setError(''); }}
