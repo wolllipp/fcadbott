@@ -102,7 +102,15 @@ export default function NavBar({ active, onChange, coordinator, pendingPetitions
                 cursor: 'pointer', textAlign: 'left',
               }}
             >
-              <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{t.icon}</span>
+              <span style={{ fontSize: 18, width: 24, height: 22, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                {t.id === 'sector' ? (
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="17" cy="10" r="2.3" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M3.5 19c.5-3 2.4-4.5 5.5-4.5s5 1.5 5.5 4.5M14.5 15.5c2.8-.8 5 .5 5.8 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                ) : t.icon}
+              </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {t.label}
                 {t.id === 'applications' && pendingApplications > 0 && (
