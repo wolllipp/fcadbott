@@ -263,14 +263,18 @@ export async function sendNewEvent(event: any) {
       students = await prisma.student.findMany({ where: { chatId: { not: null } } });
     }
 
-    const sent = new Set<string>();
-    for (const s of students) {
-      if (s.chatId && !sent.has(s.chatId)) {
-        sent.add(s.chatId);
-        try { await bot.sendMessage(s.chatId, message, options); } catch (e) { console.error(`Event notification failed for ${s.chatId}:`, e); }
-      }
-    }
+    const chatIds = [...new Set(students.map((s: any) => s.chatId).filter(Boolean))] as string[];
+    await sendBatched(chatIds, message, options);
   } catch (e) { console.error(e); }
+}
+
+async function sendBatched(chatIds: string[], message: string, options: any) {
+  const batchSize = 20;
+  for (let i = 0; i < chatIds.length; i += batchSize) {
+    const batch = chatIds.slice(i, i + batchSize);
+    await Promise.allSettled(batch.map((chatId) => bot!.sendMessage(chatId, message, options)));
+    if (i + batchSize < chatIds.length) await new Promise((r) => setTimeout(r, 1000));
+  }
 }
 
 export async function notifyAssignedStudentScanners(eventId: number) {
@@ -310,13 +314,6 @@ export async function notifyAssignedOrganizers(eventId: number) {
 }
 
 
-
-async function getStudentChatIds(): Promise<string[]> {
-  try {
-    const students = await prisma.student.findMany({ where: { chatId: { not: null } } });
-    return [...new Set(students.map((s) => s.chatId!).filter(Boolean))];
-  } catch { return []; }
-}
 
 export async function sendExemptionToStudent(exemption: any, student: any) {
   if (!bot) return;
