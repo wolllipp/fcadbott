@@ -263,35 +263,33 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%',
-              background: 'var(--accent-dim)', border: '2px solid var(--accent)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-              overflow: 'hidden', position: 'relative',
-            }}>
-              <span>{student.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
-              {((student as any).photoUrl || (student as any).chatId) && (
-                <img
-                  src={(student as any).photoUrl || `/api/auth/avatar/${(student as any).chatId}`}
-                  alt=""
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              )}
-            </div>
-            <div title={`Баллы: ${balance?.balance || 0}`} style={{ width: 40, height: 40, borderRadius: '50%', background: `conic-gradient(var(--accent) ${Math.min(100, balance?.balance || 0)}%, var(--bg-raised) 0)`, display: 'grid', placeItems: 'center' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card)', display: 'grid', placeItems: 'center', color: 'var(--accent)', fontSize: 10, fontWeight: 700 }}>
-                {balance?.balance || 0}
-              </div>
-            </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            background: 'var(--accent-dim)', border: '2px solid var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+            overflow: 'hidden', position: 'relative',
+          }}>
+            <span>{student.fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
+            {((student as any).photoUrl || (student as any).chatId) && (
+              <img
+                src={(student as any).photoUrl || `/api/auth/avatar/${(student as any).chatId}`}
+                alt=""
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
           </div>
           <div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Студент</div>
             <h1 style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{student.fullName}</h1>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>гр. {student.groupNumber}</div>
+          </div>
+        </div>
+        <div title={`Баллы: ${balance?.balance || 0}`} style={{ width: 46, height: 46, borderRadius: '50%', background: `conic-gradient(var(--accent) ${Math.min(100, balance?.balance || 0)}%, var(--bg-raised) 0)`, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card)', display: 'grid', placeItems: 'center', color: 'var(--accent)', fontSize: 11, fontWeight: 700 }}>
+            {balance?.balance || 0}
           </div>
         </div>
       </div>
