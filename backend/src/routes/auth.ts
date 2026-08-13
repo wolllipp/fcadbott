@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import https from 'https';
 import { prisma } from '../lib/prisma';
 import { getBot } from '../services/bot';
+import { setSession } from '../middleware/auth';
 
 const router = Router();
 
@@ -48,6 +49,7 @@ router.post('/verify', async (req: Request, res: Response) => {
         where: { telegramUsername: username },
       });
       if (coordinator) {
+        setSession(res, { kind: 'coordinator', id: coordinator.id, role: coordinator.role, telegramUsername: coordinator.telegramUsername });
         return res.json({ coordinator });
       }
       
@@ -56,6 +58,7 @@ router.post('/verify', async (req: Request, res: Response) => {
         where: { telegramUsername: username },
       });
       if (student) {
+        setSession(res, { kind: 'student', id: student.id, telegramUsername: student.telegramUsername || username });
         return res.json({ student });
       }
       
@@ -98,6 +101,7 @@ router.post('/verify', async (req: Request, res: Response) => {
       if (user.photo_url) (coordinator as any).photoUrl = user.photo_url;
     }
 
+    setSession(res, { kind: 'coordinator', id: coordinator.id, role: coordinator.role, telegramUsername: coordinator.telegramUsername });
     res.json({ coordinator });
   } catch (err) {
     console.error(err);
@@ -153,6 +157,7 @@ router.post('/student-register', async (req: Request, res: Response) => {
       },
     });
 
+    setSession(res, { kind: 'student', id: updated.id, telegramUsername: updated.telegramUsername || telegramUsername });
     res.json({ student: updated });
   } catch (err) {
     console.error(err);
@@ -197,6 +202,7 @@ router.post('/student-login', async (req: Request, res: Response) => {
       });
     }
 
+    setSession(res, { kind: 'student', id: student.id, telegramUsername: student.telegramUsername || telegramUsername });
     res.json({ student: { ...student, chatId: chatId || student.chatId, photoUrl: photoUrl || student.photoUrl } });
   } catch (err) {
     console.error(err);

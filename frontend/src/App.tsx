@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { api } from './utils/api';
-import PortfolioPage from './pages/PortfolioPage';
-import HomePage from './pages/HomePage';
-import ExemptionsPage from './pages/ExemptionsPage';
-import BonusesPage from './pages/BonusesPage';
-import SectorPage from './pages/SectorPage';
-import EventsPage from './pages/EventsPage';
-import CouncilPage from './pages/CouncilPage';
-import StudentLoginPage from './pages/StudentLoginPage';
-import StudentDashboard from './pages/StudentDashboard';
-import PetitionsAdminPage from './pages/PetitionsAdminPage';
-import AdminStatsPage from './pages/AdminStatsPage';
-import ApplicationsPage from './pages/ApplicationsPage';
-import ScannerPage from './pages/ScannerPage';
-import PointsAdminPage from './pages/PointsAdminPage';
+const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ExemptionsPage = lazy(() => import('./pages/ExemptionsPage'));
+const BonusesPage = lazy(() => import('./pages/BonusesPage'));
+const SectorPage = lazy(() => import('./pages/SectorPage'));
+const EventsPage = lazy(() => import('./pages/EventsPage'));
+const CouncilPage = lazy(() => import('./pages/CouncilPage'));
+const StudentLoginPage = lazy(() => import('./pages/StudentLoginPage'));
+const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
+const PetitionsAdminPage = lazy(() => import('./pages/PetitionsAdminPage'));
+const AdminStatsPage = lazy(() => import('./pages/AdminStatsPage'));
+const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'));
+const ScannerPage = lazy(() => import('./pages/ScannerPage'));
+const PointsAdminPage = lazy(() => import('./pages/PointsAdminPage'));
 import NavBar from './components/NavBar';
 import LoadingScreen from './components/LoadingScreen';
 import AccessDenied from './components/AccessDenied';
@@ -111,20 +111,16 @@ export default function App() {
 
     auth();
 
-    async function fetchPending() {
-      try {
-        const res = await fetch('/api/petitions?role=CHAIRMAN');
-        const data = await res.json();
-        setPendingPetitions(data.filter((p: any) => p.status === 'PENDING').length);
-      } catch (_) {}
-    }
-    fetchPending();
-    const iv = setInterval(fetchPending, 30000);
-    return () => clearInterval(iv);
   }, []);
 
   useEffect(() => {
     if (!coordinator) return;
+    async function fetchPendingPetitions() {
+      try {
+        const data = await fetch('/api/petitions').then((res) => res.json());
+        setPendingPetitions(Array.isArray(data) ? data.filter((p: any) => p.status === 'PENDING').length : 0);
+      } catch (_) {}
+    }
     async function fetchPendingApplications() {
       try {
         const params = coordinator.role === 'COORDINATOR' ? `?role=COORDINATOR&coordinatorId=${coordinator.id}` : '';
@@ -132,9 +128,11 @@ export default function App() {
         setPendingApplications(Array.isArray(data) ? data.filter((a: any) => a.status === 'PENDING').length : 0);
       } catch (_) {}
     }
+    fetchPendingPetitions();
     fetchPendingApplications();
     const interval = setInterval(fetchPendingApplications, 30000);
-    return () => clearInterval(interval);
+    const petitionsInterval = setInterval(fetchPendingPetitions, 30000);
+    return () => { clearInterval(interval); clearInterval(petitionsInterval); };
   }, [coordinator]);
 
   function handleStudentLogin(s: any) {
@@ -155,24 +153,27 @@ export default function App() {
   const safeTestMode = isProduction ? null : testMode;
 
   // Not in Telegram and no test mode — show portfolio
-  if (!isInTelegram() && !safeTestMode) return <PortfolioPage />;
+  if (!isInTelegram() && !safeTestMode) return <Suspense fallback={<LoadingScreen />}><PortfolioPage /></Suspense>;
 
   // Student mode
   if (!coordinator && student) {
     return (
+      <Suspense fallback={<LoadingScreen />}>
       <MascotToastProvider>
         <StudentDashboard student={student} onLogout={handleStudentLogout} />
       </MascotToastProvider>
+      </Suspense>
     );
   }
 
   if (!coordinator && denied && !student) {
-    return <StudentLoginPage onLogin={handleStudentLogin} />;
+    return <Suspense fallback={<LoadingScreen />}><StudentLoginPage onLogin={handleStudentLogin} /></Suspense>;
   }
 
   if (!coordinator) return <AccessDenied />;
 
   return (
+    <Suspense fallback={<LoadingScreen />}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div key={tab} className="page-anim" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
         {tab === 'home' && <HomePage coordinator={coordinator} onNavigate={setTab} />}
@@ -188,5 +189,6 @@ export default function App() {
       </div>
       <NavBar active={tab} onChange={setTab} coordinator={coordinator} pendingPetitions={pendingPetitions} pendingApplications={pendingApplications} />
     </div>
+    </Suspense>
   );
 }

@@ -14,15 +14,31 @@ import { pointsRouter } from './routes/points';
 import { adminRouter } from './routes/admin';
 import { attendanceRouter } from './routes/attendance';
 import { initBot, getBot, sendEventReminders } from './services/bot';
+import { requireApiAuth } from './middleware/auth';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const rateBuckets = new Map<string, { start: number; count: number }>();
+function rateLimit(limit: number, windowMs: number) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const key = `${req.ip}:${req.path}`;
+    const now = Date.now();
+    const bucket = rateBuckets.get(key);
+    if (!bucket || now - bucket.start > windowMs) rateBuckets.set(key, { start: now, count: 1 });
+    else if (++bucket.count > limit) return res.status(429).json({ error: 'Слишком много запросов. Повторите позже.' });
+    next();
+  };
+}
+
 app.use(cors({ origin: ['https://fcadbot.site', 'https://delete-unsnap-banker.ngrok-free.dev', 'http://localhost:5173'], credentials: true }));
 app.use(express.json());
 app.use(express.static('../frontend/dist'));
+app.use('/api', requireApiAuth);
+app.use('/api/auth', rateLimit(30, 60_000));
+app.use('/api/attendance/scan', rateLimit(60, 60_000));
 
 app.use('/api/auth', authRouter);
 app.use('/api/students', studentsRouter);
@@ -38,6 +54,8 @@ app.use('/api/admin', adminRouter);
 app.use('/api/attendance', attendanceRouter);
 
 app.post('/api/bot-webhook', (req, res) => {
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (webhookSecret && req.get('X-Telegram-Bot-Api-Secret-Token') !== webhookSecret) return res.sendStatus(403);
   const b = getBot();
   if (b) { b.processUpdate(req.body); res.sendStatus(200); }
   else res.status(503).json({ error: 'Bot not initialized' });

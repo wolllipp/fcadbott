@@ -166,20 +166,6 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [evts, apps] = await Promise.all([
-          api.events.list(),
-          api.applications.list({ studentId: student.id }).catch(() => []),
-        ]);
-        setEvents(evts);
-        setApplications(apps);
-      } catch (_) {}
-    }
-    load();
-  }, [tab]);
-
   async function registerForEvent(eventId: number) {
     setRegistering(eventId);
     try {

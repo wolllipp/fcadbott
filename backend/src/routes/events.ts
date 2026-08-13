@@ -29,6 +29,15 @@ async function ensureOrganizerParticipation(eventId: number, studentIds: number[
 
 router.get('/', async (req: Request, res: Response) => {
   try {
+    if (!req.authUser) {
+      const publicEvents = await prisma.event.findMany({
+        where: { status: 'PUBLISHED' },
+        select: { id: true, name: true, eventDate: true, description: true, location: true, status: true, audience: true },
+        orderBy: { eventDate: 'desc' },
+        take: 20,
+      });
+      return res.json(publicEvents);
+    }
     const events = await prisma.event.findMany({
       include: {
         participants: true,
