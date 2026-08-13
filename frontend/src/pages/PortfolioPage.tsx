@@ -1,379 +1,160 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const councilMembers = [
-  { name: 'Скворец Иван', role: 'Председатель', sector: 'Студсовет', photo: '/council/Скворец Иван.png' },
-  { name: 'Линкевич Алексей', role: 'Зам. председателя', sector: 'Студсовет', photo: '/council/Линкевич Алексей.png' },
-  { name: 'Самуйлик Елизавета', role: 'Зам. председателя', sector: 'Студсовет', photo: '/council/Самуйлик Елизавета.png' },
-  { name: 'Ларченко Мария', role: 'Секретарь', sector: 'Студсовет', photo: '/council/Ларченко Мария.png' },
-  { name: 'Галяк Иван', role: 'Координатор', sector: 'Учебное', photo: '/council/Галяк Иван.png' },
-  { name: 'Емельянович Дарья', role: 'Координатор', sector: 'Культурно-массовое', photo: '/council/Емельянович Дарья.png' },
-  { name: 'Карпова Анастасия', role: 'Координатор', sector: 'Вокальное', photo: '/council/Карпова Анастасия.png' },
-  { name: 'Бобровская Варвара', role: 'Координатор', sector: 'Танцевальное', photo: '/council/Бобровская Варвара.png' },
-  { name: 'Цуприк Илья', role: 'Координатор', sector: 'Танцевальное', photo: '/council/Цуприк Илья.png' },
-  { name: 'Ковалик Диана', role: 'Координатор', sector: 'Спортивное', photo: '/council/Ковалик Диана.png' },
-  { name: 'Шаблинский Александр', role: 'Координатор', sector: 'Инструментальное', photo: '/council/Шаблинский Александр.png' },
-  { name: 'Садовский Александр', role: 'Координатор', sector: 'Научное', photo: '/council/Садовский Александр.png' },
-  { name: 'Карпекина Ольга', role: 'Координатор', sector: 'Декоративное', photo: '/council/Карпекина Ольга.png' },
-  { name: 'Помахо Алеся', role: 'Координатор', sector: 'Профориентационное', photo: '/council/Помахо Алеся.png' },
-  { name: 'Шулеев Денис', role: 'Координатор', sector: 'Декоративное', photo: '/council/Шулеев Денис.png' },
+  ['Скворец Иван', 'Председатель', 'Студсовет', '/council/Скворец Иван.png'],
+  ['Линкевич Алексей', 'Зам. председателя', 'Студсовет', '/council/Линкевич Алексей.png'],
+  ['Самуйлик Елизавета', 'Зам. председателя', 'Студсовет', '/council/Самуйлик Елизавета.png'],
+  ['Ларченко Мария', 'Секретарь', 'Студсовет', '/council/Ларченко Мария.png'],
+  ['Галяк Иван', 'Координатор', 'Учебное', '/council/Галяк Иван.png'],
+  ['Емельянович Дарья', 'Координатор', 'Культурно-массовое', '/council/Емельянович Дарья.png'],
+  ['Карпова Анастасия', 'Координатор', 'Вокальное', '/council/Карпова Анастасия.png'],
+  ['Бобровская Варвара', 'Координатор', 'Танцевальное', '/council/Бобровская Варвара.png'],
+  ['Цуприк Илья', 'Координатор', 'Танцевальное', '/council/Цуприк Илья.png'],
+  ['Ковалик Диана', 'Координатор', 'Спортивное', '/council/Ковалик Диана.png'],
+  ['Шаблинский Александр', 'Координатор', 'Инструментальное', '/council/Шаблинский Александр.png'],
+  ['Садовский Александр', 'Координатор', 'Научное', '/council/Садовский Александр.png'],
+  ['Карпекина Ольга', 'Координатор', 'Декоративное', '/council/Карпекина Ольга.png'],
+  ['Помахо Алеся', 'Координатор', 'Профориентационное', '/council/Помахо Алеся.png'],
+  ['Шулеев Денис', 'Координатор', 'Декоративное', '/council/Шулеев Денис.png'],
 ];
 
 const administration = [
-  { name: 'Будник Артур Владимирович', position: 'Декан', degree: 'к.т.н., доцент', photo: '' },
-  { name: 'Котухов Алексей', position: 'Зам. декана', degree: '', photo: '' },
-  { name: 'Инна Владимировна', position: 'Декан (ФКТ)', degree: '', photo: '' },
-  { name: 'Ларченко Никита', position: 'Зам. декана по воспитательной работе', degree: '', photo: '/council/Ларченко Никита.png' },
+  ['Будник Артур Владимирович', 'Декан'], ['Кракасевич Сергей Викторович', 'Заместитель декана'],
+  ['Камлач Павел Викторович', 'Заместитель декана'], ['Котухов Алексей Валерьевич', 'Заместитель декана'],
+  ['Андриалович Инна Владимировна', 'Заместитель декана по идеологической и воспитательной работе'],
+  ['Пискун Геннадий Адамович', 'Заместитель декана по научной работе'],
+  ['Сашникова Татьяна Михайловна', 'Ведущий специалист деканата'], ['Барановская Анна Анатольевна', 'Специалист деканата'],
+  ['Ганакова Екатерина Викторовна', 'Специалист деканата'],
 ];
 
-const recentEvents = [
-  { name: 'День первокурсника', date: '2025-09-01', description: 'Торжественная встреча первокурсников ФКП' },
-  { name: 'Студенческая весна', date: '2026-03-15', description: 'Фестиваль талантов факультета' },
-  { name: 'Научная конференция', date: '2026-04-20', description: 'Ежегодная студенческая научная конференция' },
+const sections = [
+  ['Культурно-массовый', 'Организует яркие мероприятия и объединяет танцевальное, декоративное, вокальное, театральное и инструментальное направления.'],
+  ['Информационный', 'Ведёт социальные сети, снимает события факультета и помогает сохранять самые важные моменты студенческой жизни.'],
+  ['Учебный', 'Помогает студентам с дисциплинами, организует занятия и создаёт среду для общения и взаимопомощи.'],
+  ['Научный', 'Прокачивает тайм-менеджмент и коммуникацию, помогает со статьями, проектами и научными мероприятиями.'],
+  ['Спортивный', 'Собирает команды и представляет факультет на соревнованиях, поддерживая активную спортивную жизнь.'],
+  ['Профориентационный', 'Ездит в школы и рассказывает будущим студентам о БГУИР, факультете и возможностях обучения.'],
+  ['Техническое обеспечение', 'Отвечает за звук, свет, экраны, мультимедиа и полное техническое сопровождение событий.'],
 ];
 
-const curators = [
-  { name: 'Кафедра компьютерных технологий', description: 'Научное руководство студенческим советом' },
-  { name: 'Кафедра программной инженерии', description: 'Совместные проекты и мероприятия' },
+const activities = [
+  ['Спортивный клуб БГУИР', 'Спортивные мероприятия, соревнования и представление университета.'],
+  ['ЦКМР', 'Творческие коллективы, программы и университетские мероприятия.'],
+  ['УИВР', 'Мероприятия вне университета и взаимодействие со студенческими командами.'],
+  ['Студенческий совет БГУИР', 'Организация мероприятий, помощь студентам и адаптация первокурсников.'],
+  ['Студенческие советы общежитий', 'Комфортная и насыщенная жизнь в общежитиях: от бытовых вопросов до турниров.'],
+  ['Студенческий совет ФКП', 'Координационный центр студенческой жизни факультета и представительства интересов студентов.'],
 ];
+
+const slang = [
+  ['ИИС', 'Интегрированная информационная система: журнал, профилизация, общежитие и электронная зачётка.'],
+  ['СС', 'Студенческий совет — представители студентов, организующие события и помогающие решать вопросы.'],
+  ['Деканат', 'Координирующий центр факультета, отвечающий за учебную, научную и воспитательную работу.'],
+  ['Зачётка', 'Электронный документ, где фиксируются оценки.'], ['Пара', 'Занятие длительностью 80 минут.'],
+  ['Куратор', 'Преподаватель, который помогает группе адаптироваться и решать учебные вопросы.'],
+  ['Сессия', 'Период экзаменов, который проходит дважды в год.'], ['Поток', 'Несколько групп, которые вместе посещают общие лекции.'],
+];
+
+const sportSections = [
+  ['ЛФК / СМГ', 'ЛФК и СМГ не могут выбрать другую секцию. СМГ обычно занимается в 3 корпусе.'],
+  ['Плавание СМГ', 'Одно занятие в неделю в выбранный день на протяжении семестра.'],
+  ['Атлетическая гимнастика', 'Тяжёлая атлетика для мальчиков, занятия проходят в спортивном корпусе.'],
+  ['Футбол', 'Занятия на стадионе за 2 корпусом, берут и девушек с хорошей подготовкой.'],
+  ['Аэробика', 'Секция для девушек во 2 корпусе, подходит и новичкам, и тем, кто уже занимается спортом.'],
+  ['Плавание', 'Занятия в 3 корпусе, принимают даже тех, кто пока не умеет плавать.'],
+  ['Мини-футбол', 'Занятия в 6 корпусе, секция для парней.'], ['Лёгкая атлетика', 'Много бега в любую погоду, сюда часто попадают те, кто не выбрал другую секцию.'],
+  ['Тайский бокс', 'Свободный график посещений, техника без обязательных спаррингов.'], ['Борьба', 'Упражнения в 6 корпусе с короткими перерывами.'],
+  ['Волейбол 3к / 5к', 'Два уровня подготовки в 3 и 5 корпусах.'], ['Баскетбол', 'Занятия во 2 корпусе, иногда с возможностью тренироваться в зале.'],
+];
+
+function Section({ id, eyebrow, title, children, dark = false }: { id: string; eyebrow?: string; title: string; children: React.ReactNode; dark?: boolean }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) node.classList.add('landing-visible'); }, { threshold: 0.12 });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return <section ref={ref} id={id} className={`landing-section ${dark ? 'landing-dark' : ''}`}><div className="landing-container"><div className="landing-heading"><span>{eyebrow}</span><h2>{title}</h2></div>{children}</div></section>;
+}
 
 export default function PortfolioPage() {
-  const [activeSection, setActiveSection] = useState('hero');
   const [events, setEvents] = useState<any[]>([]);
-
   useEffect(() => {
-    fetch('/api/events')
-      .then(r => r.json())
-      .then(data => {
-        const published = data.filter((e: any) => e.status === 'PUBLISHED').slice(0, 3);
-        setEvents(published.length > 0 ? published : recentEvents);
-      })
-      .catch(() => setEvents(recentEvents));
+    fetch('/api/events').then((r) => r.json()).then((data) => setEvents(data.filter((e: any) => e.status === 'PUBLISHED').slice(0, 3))).catch(() => {});
   }, []);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%)',
-      color: '#e4e4e7',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    }}>
-      {/* Navigation */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        background: 'rgba(10, 10, 15, 0.9)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        zIndex: 1000,
-        padding: '0 20px',
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/fcad.svg" alt="ФКП" style={{ height: 36 }} />
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>ФКП БГУИР</span>
-          </div>
-          <div style={{ display: 'flex', gap: 24, fontSize: 14 }}>
-            {['О факультете', 'Администрация', 'Студсовет', 'Мероприятия', 'Кураторы'].map(section => (
-              <a key={section} href={`#${section.toLowerCase().replace(/\s+/g, '-')}`}
-                style={{ color: '#a1a1aa', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#a1a1aa')}>
-                {section}
-              </a>
-            ))}
-          </div>
-        </div>
-      </nav>
+    <div className="landing-page">
+      <style>{`
+        html { scroll-behavior: smooth; }
+        .landing-page { min-height: 100vh; background: #0b0c12; color: #eef0f8; font-family: Onest, system-ui, sans-serif; overflow-x: hidden; }
+        .landing-nav { position: sticky; top: 0; z-index: 20; background: rgba(11,12,18,.82); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255,255,255,.08); }
+        .landing-nav-inner { max-width: 1180px; height: 68px; margin: auto; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+        .landing-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 800; white-space: nowrap; }
+        .landing-brand img { width: 38px; height: 38px; }
+        .landing-links { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; }
+        .landing-links::-webkit-scrollbar { display: none; }
+        .landing-links a { color: #a6aabd; text-decoration: none; font-size: 12px; white-space: nowrap; transition: color .2s; }
+        .landing-links a:hover { color: white; }
+        .landing-hero { min-height: 82vh; display: grid; place-items: center; text-align: center; padding: 110px 22px 90px; background: radial-gradient(circle at 50% 20%, rgba(123,110,246,.3), transparent 42%), linear-gradient(140deg,#0b0c12,#17152a 55%,#0b0c12); }
+        .landing-hero h1 { max-width: 850px; margin: 18px auto; font-size: clamp(38px,7vw,76px); line-height: .98; letter-spacing: -.065em; }
+        .landing-hero p { max-width: 650px; margin: 0 auto 28px; color: #b8b9c9; font-size: clamp(16px,2vw,21px); line-height: 1.55; }
+        .landing-logo { width: 105px; filter: drop-shadow(0 12px 32px rgba(123,110,246,.45)); }
+        .landing-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .landing-button { display: inline-flex; padding: 13px 20px; border-radius: 12px; color: white; text-decoration: none; font-weight: 700; font-size: 14px; background: #786cf2; box-shadow: 0 10px 28px rgba(120,108,242,.22); }
+        .landing-button.alt { background: rgba(255,255,255,.08); box-shadow: none; border: 1px solid rgba(255,255,255,.12); }
+        .landing-section { padding: 92px 22px; opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s ease; scroll-margin-top: 76px; }
+        .landing-section.landing-visible { opacity: 1; transform: translateY(0); }
+        .landing-dark { background: rgba(255,255,255,.035); }
+        .landing-container { max-width: 1180px; margin: auto; }
+        .landing-heading { margin-bottom: 34px; }
+        .landing-heading span { color: #9288ff; font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+        .landing-heading h2 { margin: 7px 0 0; font-size: clamp(28px,4vw,44px); letter-spacing: -.045em; }
+        .landing-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(235px,1fr)); gap: 14px; }
+        .landing-card { padding: 21px; border: 1px solid rgba(255,255,255,.09); border-radius: 18px; background: rgba(255,255,255,.055); transition: transform .25s, border-color .25s, background .25s; }
+        .landing-card:hover { transform: translateY(-5px); border-color: rgba(146,136,255,.7); background: rgba(123,110,246,.1); }
+        .landing-card h3 { margin: 0 0 7px; font-size: 17px; }
+        .landing-card p, .landing-card li { color: #b5b7c6; line-height: 1.62; font-size: 14px; }
+        .landing-card ul { margin: 0; padding-left: 18px; }
+        .landing-person img, .landing-person-placeholder { width: 100%; height: 210px; object-fit: cover; border-radius: 13px; background: linear-gradient(145deg,#7368e8,#24233b); display: grid; place-items: center; font-size: 44px; font-weight: 800; color: white; }
+        .landing-person h3 { margin-top: 14px; }
+        .landing-meta { color: #9288ff; font-size: 12px; }
+        .landing-notice { padding: 25px; border-radius: 18px; background: linear-gradient(135deg,rgba(123,110,246,.18),rgba(255,255,255,.04)); border: 1px solid rgba(146,136,255,.25); line-height: 1.65; color: #d6d8e5; }
+        .landing-footer { padding: 42px 22px; border-top: 1px solid rgba(255,255,255,.08); text-align: center; color: #8d90a1; }
+        @media (max-width: 700px) { .landing-nav-inner { height: 60px; padding: 0 14px; } .landing-brand span { display: none; } .landing-section { padding: 68px 16px; } .landing-hero { min-height: 78vh; padding: 80px 18px; } }
+      `}</style>
 
-      {/* Hero Section */}
-      <section id="hero" style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        padding: '120px 20px 80px',
-        background: 'radial-gradient(ellipse at center, rgba(123, 110, 246, 0.1) 0%, transparent 70%)',
-      }}>
-        <div style={{ maxWidth: 800 }}>
-          <img src="/fcad.svg" alt="ФКП БГУИР" style={{ width: 120, marginBottom: 24 }} />
-          <h1 style={{ fontSize: 48, fontWeight: 800, marginBottom: 16, color: '#fff', lineHeight: 1.2 }}>
-            Факультет компьютерного проектирования
-          </h1>
-          <p style={{ fontSize: 20, color: '#a1a1aa', marginBottom: 32, lineHeight: 1.6 }}>
-            Белорусский государственный университет информатики и радиоэлектроники
-          </p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="#студсовет" style={{
-              padding: '14px 32px',
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #7b6ef6, #5a4fcf)',
-              color: '#fff',
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: 16,
-              transition: 'transform 0.2s, box-shadow 0.2s',
-            }}>
-              Студенческий совет
-            </a>
-            <a href="https://www.bsuir.by/ru/fkp" target="_blank" rel="noopener" style={{
-              padding: '14px 32px',
-              borderRadius: 12,
-              background: 'rgba(255, 255, 255, 0.1)',
-              color: '#fff',
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: 16,
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-            }}>
-              Сайт факультета
-            </a>
-          </div>
-        </div>
-      </section>
+      <nav className="landing-nav"><div className="landing-nav-inner"><a className="landing-brand" href="#top"><img src="/fcad.svg" alt="ФКП" /><span>ФКП БГУИР</span></a><div className="landing-links">{[['О факультете','about'],['Поступление','admission'],['Администрация','administration'],['Активности','activities'],['Студсовет','council'],['Сектора','sectors'],['Расписание','schedule'],['Словарь','slang'],['Общежития','dormitory']].map(([label,id]) => <a key={id} href={`#${id}`}>{label}</a>)}</div></div></nav>
 
-      {/* About Section */}
-      <section id="о-факультете" style={{ padding: '80px 20px', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 48 }}>
-          <div>
-            <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 24, color: '#fff' }}>О факультете</h2>
-            <p style={{ fontSize: 16, lineHeight: 1.8, color: '#a1a1aa', marginBottom: 16 }}>
-              Факультет компьютерного проектирования (бывший конструкторско-технологический факультет) с 1973 года является одним из инновационных и динамически развивающихся факультетов БГУИР.
-            </p>
-            <p style={{ fontSize: 16, lineHeight: 1.8, color: '#a1a1aa' }}>
-              Факультет готовит специалистов в области компьютерного проектирования, программной инженерии и информационных технологий. Выпускники факультета успешно работают в ведущих IT-компаниях Беларуси и за рубежом.
-            </p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {[
-              { number: '50+', label: 'Лет истории' },
-              { number: '1000+', label: 'Студентов' },
-              { number: '50+', label: 'Преподавателей' },
-              { number: '95%', label: 'Трудоустройство' },
-            ].map(stat => (
-              <div key={stat.label} style={{
-                padding: '20px 24px',
-                borderRadius: 16,
-                background: 'rgba(123, 110, 246, 0.1)',
-                border: '1px solid rgba(123, 110, 246, 0.2)',
-              }}>
-                <div style={{ fontSize: 32, fontWeight: 800, color: '#7b6ef6', marginBottom: 4 }}>{stat.number}</div>
-                <div style={{ fontSize: 14, color: '#a1a1aa' }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <main id="top">
+        <section className="landing-hero"><div><img className="landing-logo" src="/fcad.svg" alt="ФКП БГУИР" /><h1>Факультет компьютерного проектирования</h1><p>Место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div className="landing-actions"><a className="landing-button" href="#admission">Поступившим — важно</a><a className="landing-button alt" href="#council">Познакомиться со студсоветом</a></div></div></section>
 
-      {/* Administration Section */}
-      <section id="администрация" style={{ padding: '80px 20px', background: 'rgba(255, 255, 255, 0.02)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 48, color: '#fff', textAlign: 'center' }}>Администрация</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24 }}>
-            {administration.map(person => (
-              <div key={person.name} style={{
-                padding: '32px 24px',
-                borderRadius: 20,
-                background: '#18181b',
-                border: '1px solid #27272a',
-                textAlign: 'center',
-                transition: 'transform 0.2s, border-color 0.2s',
-              }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.borderColor = '#7b6ef6';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.borderColor = '#27272a';
-                }}>
-                <div style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #7b6ef6, #5a4fcf)',
-                  margin: '0 auto 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 32,
-                  color: '#fff',
-                }}>
-                  {person.name.charAt(0)}
-                </div>
-                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4, color: '#fff' }}>{person.name}</h3>
-                <div style={{ fontSize: 14, color: '#7b6ef6', fontWeight: 500, marginBottom: 4 }}>{person.position}</div>
-                {person.degree && <div style={{ fontSize: 13, color: '#71717a' }}>{person.degree}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <Section id="about" eyebrow="ФКП БГУИР" title="О факультете"><div className="landing-grid"><div className="landing-card"><h3>Компьютерное проектирование</h3><p>Факультет готовит специалистов в области компьютерного проектирования, программной инженерии и информационных технологий. Здесь учатся создавать решения, которые работают за пределами учебной аудитории.</p></div><div className="landing-card"><h3>Студенческая жизнь</h3><p>БГУИР — это лекции, проекты, спорт, творчество, новые знакомства и команды, в которых можно найти своё направление.</p></div><div className="landing-card"><h3>Студенческий совет ФКП</h3><p>Помогает первокурсникам адаптироваться, представляет интересы студентов, организует события и связывает студентов с факультетом.</p></div></div></Section>
 
-      {/* Student Council Section */}
-      <section id="студсовет" style={{ padding: '80px 20px', maxWidth: 1200, margin: '0 auto' }}>
-        <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 16, color: '#fff', textAlign: 'center' }}>Студенческий совет</h2>
-        <p style={{ fontSize: 16, color: '#a1a1aa', textAlign: 'center', marginBottom: 48, maxWidth: 600, margin: '0 auto 48px' }}>
-          Организация, объединяющая студентов факультета для реализации творческих, образовательных и социальных проектов
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 20 }}>
-          {councilMembers.map(member => (
-            <div key={member.name} style={{
-              borderRadius: 20,
-              background: '#18181b',
-              border: '1px solid #27272a',
-              overflow: 'hidden',
-              transition: 'transform 0.2s, border-color 0.2s',
-            }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.borderColor = '#7b6ef6';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = '#27272a';
-              }}>
-              <div style={{
-                width: '100%',
-                height: 200,
-                background: '#27272a',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-              }}>
-                <img src={member.photo} alt={member.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).parentElement!.innerHTML = `
-                      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7b6ef6,#5a4fcf);color:#fff;font-size:32px;font-weight:700">
-                        ${member.name.charAt(0)}
-                      </div>
-                    `;
-                  }} />
-              </div>
-              <div style={{ padding: '16px' }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, color: '#fff' }}>{member.name}</h3>
-                <div style={{ fontSize: 13, color: '#7b6ef6', fontWeight: 500, marginBottom: 2 }}>{member.role}</div>
-                <div style={{ fontSize: 12, color: '#71717a' }}>{member.sector}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+        <Section id="admission" eyebrow="Для поступивших на первый курс" title="Важная информация"><div className="landing-grid"><div className="landing-card"><h3>Выдача договоров</h3><p>О подготовке специалистов с высшим образованием за счёт средств республиканского бюджета и на платной основе.</p><p><strong>17–31 августа 2026 года</strong></p><p>ФКП, 2-й учебный корпус, ул. Петруся Бровки, 4, аудитория 308.</p><p>Справки: +375 17 293 88 02, +375 17 293 86 25</p></div><div className="landing-card"><h3>Оплата обучения</h3><p>Первый этап оплаты — после приказа о зачислении, до 31 августа 2026 года.</p><p><strong>25% годовой стоимости: 1 182,50 руб.</strong></p><p>Приказ №317 от 22.06.2026 «Об установлении стоимости обучения на платной основе».</p></div><div className="landing-card"><h3>Оплата через ЕРИП</h3><p>Система «Расчёт» → Образование и развитие → Высшее образование → Минск → БГУИР → Обучение (1 курс).</p><p>Введите номер студенческого билета без дефиса, затем сумму.</p></div></div></Section>
 
-      {/* Events Section */}
-      <section id="мероприятия" style={{ padding: '80px 20px', background: 'rgba(255, 255, 255, 0.02)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 48, color: '#fff', textAlign: 'center' }}>Последние мероприятия</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
-            {(events.length > 0 ? events : recentEvents).map((event, i) => (
-              <div key={i} style={{
-                padding: '24px',
-                borderRadius: 20,
-                background: '#18181b',
-                border: '1px solid #27272a',
-                transition: 'transform 0.2s, border-color 0.2s',
-              }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.borderColor = '#7b6ef6';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.borderColor = '#27272a';
-                }}>
-                <div style={{ fontSize: 13, color: '#7b6ef6', marginBottom: 8 }}>
-                  {new Date(event.eventDate || event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </div>
-                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#fff' }}>{event.name}</h3>
-                <p style={{ fontSize: 14, color: '#a1a1aa', lineHeight: 1.6 }}>{event.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <Section id="administration" eyebrow="БГУИР" title="Администрация"><div className="landing-notice" style={{ marginBottom: 22 }}><strong>Ректорат</strong><br />Ректор — Богуш Вадим Анатольевич<br />Проректоры — Давыдов Максим Викторович, Стемпицкий Виктор Романович, Шнейдеров Евгений Николаевич, Кузнецов Дмитрий Федорович, Артюшенко Евгений Антонович, Хаткевич Владислав Казимирович.</div><div className="landing-grid">{administration.map(([name, role]) => <article className="landing-card landing-person" key={name}><div className="landing-person-placeholder">{name[0]}</div><h3>{name}</h3><div className="landing-meta">{role}</div></article>)}</div></Section>
 
-      {/* Curators Section */}
-      <section id="кураторы" style={{ padding: '80px 20px', maxWidth: 1200, margin: '0 auto' }}>
-        <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 48, color: '#fff', textAlign: 'center' }}>Кураторы</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
-          {curators.map(curator => (
-            <div key={curator.name} style={{
-              padding: '32px 24px',
-              borderRadius: 20,
-              background: '#18181b',
-              border: '1px solid #27272a',
-              transition: 'transform 0.2s, border-color 0.2s',
-            }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.borderColor = '#7b6ef6';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = '#27272a';
-              }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: 'rgba(123, 110, 246, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7b6ef6" strokeWidth="2">
-                  <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                  <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                </svg>
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#fff' }}>{curator.name}</h3>
-              <p style={{ fontSize: 14, color: '#a1a1aa', lineHeight: 1.6 }}>{curator.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        <Section id="activities" eyebrow="Возможности" title="Студенческие активы" dark><div className="landing-grid">{activities.map(([name, text]) => <article className="landing-card" key={name}><h3>{name}</h3><p>{text}</p></article>)}</div></Section>
 
-      {/* Footer */}
-      <footer style={{ padding: '40px 20px', borderTop: '1px solid #27272a', textAlign: 'center' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
-            <img src="/fcad.svg" alt="ФКП" style={{ height: 32 }} />
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>ФКП БГУИР</span>
-          </div>
-          <p style={{ fontSize: 14, color: '#71717a', marginBottom: 16 }}>
-            г. Минск, ул. Бровки 4, ауд. 314, 2 корпус БГУИР
-          </p>
-          <p style={{ fontSize: 14, color: '#71717a', marginBottom: 16 }}>
-            Телефон: +375 17 293-85-83, +375 17 293-22-10
-          </p>
-          <p style={{ fontSize: 14, color: '#71717a', marginBottom: 16 }}>
-            E-mail: dekfkp@bsuir.by
-          </p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 24 }}>
-            <a href="https://www.bsuir.by" target="_blank" rel="noopener"
-              style={{ color: '#a1a1aa', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#a1a1aa')}>
-              Сайт БГУИР
-            </a>
-            <a href="https://www.bsuir.by/ru/fkp" target="_blank" rel="noopener"
-              style={{ color: '#a1a1aa', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#a1a1aa')}>
-              Сайт ФКП
-            </a>
-          </div>
-          <p style={{ fontSize: 13, color: '#3f3f46' }}>
-            © {new Date().getFullYear()} Факультет компьютерного проектирования БГУИР
-          </p>
-        </div>
-      </footer>
+        <Section id="council" eyebrow="Команда" title="Студенческий совет ФКП"><p style={{ color: '#b5b7c6', maxWidth: 650, lineHeight: 1.7, marginBottom: 30 }}>С уважением, Студенческий совет ФКП. В совете есть несколько секторов, где можно найти команду, попробовать себя и сделать факультет ярче.</p><div className="landing-grid">{councilMembers.map(([name, role, sector, photo]) => <article className="landing-card landing-person" key={name}><img src={photo} alt={name} /><h3>{name}</h3><div className="landing-meta">{role} · {sector}</div></article>)}</div></Section>
+
+        <Section id="sectors" eyebrow="Направления" title="Сектора студсовета" dark><div className="landing-grid">{sections.map(([name, text]) => <article className="landing-card" key={name}><h3>💜 {name}</h3><p>{text}</p></article>)}</div><div className="landing-notice" style={{ marginTop: 20 }}>В начале сентября будет собрание, где координаторы расскажут о секторах подробнее, а позже пройдёт отбор.</div></Section>
+
+        <Section id="schedule" eyebrow="Полезно первокурснику" title="Приложения для расписания"><div className="landing-grid"><article className="landing-card"><h3>Bsuir Schedule — iOS</h3><p>Лаконично показывает расписание группы и следующую пару без лишних экранов.</p></article><article className="landing-card"><h3>БГУИР – Удобное расписание — Android</h3><p>Выберите группу и смотрите пары на сегодня или неделю вперёд.</p></article></div></Section>
+
+        <Section id="slang" eyebrow="#студслэнг" title="Слова, которые встретятся в университете" dark><div className="landing-grid">{slang.map(([term, text]) => <article className="landing-card" key={term}><h3>{term}</h3><p>{text}</p></article>)}</div></Section>
+
+        <Section id="sport" eyebrow="Физическая культура" title="О секциях"><div className="landing-grid">{sportSections.map(([name, text]) => <article className="landing-card" key={name}><h3>{name}</h3><p>{text}</p></article>)}</div><div className="landing-notice" style={{ marginTop: 20 }}>Если остались вопросы по физкультуре, пишите в чат или в личные сообщения студсовету.</div></Section>
+
+        <Section id="dormitory" eyebrow="После зачисления" title="Общежитие"><div className="landing-card"><h3>Какие документы подать 15–19 августа 2026 года</h3><ul><li>Заявление по образцу в месте подачи документов</li><li>Копия паспорта (стр. 25, 31–33)</li><li>Справка о месте жительства и составе семьи</li><li>Документы, подтверждающие льготы</li></ul><p style={{ marginTop: 14 }}>Заселение — 24–26 августа. Номер общежития и блока появится в ИИС.</p></div><div className="landing-grid" style={{ marginTop: 14 }}>{[1,2,3,4,5].map((n) => <article className="landing-card" key={n}><h3>Общежитие №{n}</h3><p>Видеообзоры, условия проживания, расположение и студенческие советы общежитий будут добавлены здесь.</p></article>)}</div></Section>
+
+        <Section id="events" eyebrow="Календарь" title="Мероприятия"><div className="landing-grid">{events.length ? events.map((event) => <article className="landing-card" key={event.id}><div className="landing-meta">{new Date(event.eventDate).toLocaleDateString('ru-RU')}</div><h3>{event.name}</h3><p>{event.description || 'Мероприятие студенческой жизни ФКП.'}</p></article>) : <div className="landing-notice">Следите за обновлениями — ближайшие мероприятия появятся здесь.</div>}</div></Section>
+      </main>
+
+      <footer className="landing-footer"><img src="/fcad.svg" alt="ФКП" style={{ width: 42, marginBottom: 12 }} /><div>Факультет компьютерного проектирования БГУИР</div><div style={{ marginTop: 8 }}>ул. Петруся Бровки, 4 · +375 17 293 88 02 · +375 17 293 86 25</div><div style={{ marginTop: 18, fontSize: 12 }}>© {new Date().getFullYear()} Студенческий совет ФКП</div></footer>
     </div>
   );
 }
