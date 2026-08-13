@@ -20,6 +20,10 @@ const councilMembers = [
   ['Шахов Евгений', 'Координатор', 'Информационное', '/council/Шахов Евгений.png'],
   ['Гояев Кирилл', 'Координатор', 'Культурно-массовое', '/council/Гояев Кирилл.png'],
   ['Ноздрин Вадим', 'Координатор', 'Культурно-массовое', '/council/Ноздрин Вадим.png'],
+  ['Булыно Татьяна', 'Координатор', 'Вокальное', '/council/Булыно Татьяна.png'],
+  ['Диковицкая Анжелика', 'Координатор', 'Театральное', '/council/Диковицкая Анжелика.png'],
+  ['Петушок Матвей', 'Координатор', 'Театральное', '/council/Петушок Матвей.png'],
+  ['Ларченко Никита', 'Секретарь БРСМ', '', '/council/Ларченко Никита.png'],
 ];
 
 const administrationGroups = [
@@ -155,7 +159,7 @@ export default function PortfolioPage() {
       <nav className={`landing-nav${navVisible ? ' visible' : ''}`}><div className="landing-nav-inner"><a className="landing-brand" href="#top" onClick={(e) => { e.preventDefault(); scrollToSection('top'); }}><span style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 16 }}>ФКП БГУИР</span></a><div className="landing-links">{[['О факультете','about'],['Поступление','admission'],['Администрация','administration'],['Активности','activities'],['Студсовет','council'],['Сектора','sectors'],['Расписание','schedule'],['Словарь','slang'],['Общежития','dormitory']].map(([label,id]) => <a key={id} href={`#${id}`} onClick={(e) => { e.preventDefault(); scrollToSection(id); }}>{label}</a>)}</div></div></nav>
 
       <main id="top">
-        <section className="landing-hero"><div><h1>ФКП БГУИР</h1><p>Факультет компьютерного проектирования — место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div className="landing-actions"><a className="landing-button" href="#admission" onClick={(e) => { e.preventDefault(); scrollToSection('admission'); }}>Поступившим — важно</a><a className="landing-button alt" href="#council" onClick={(e) => { e.preventDefault(); scrollToSection('council'); }}>Познакомиться со студсоветом</a></div></div></section>
+        <section className="landing-hero"><div><h1>ФКП БГУИР</h1><p>Факультет компьютерного проектирования — место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 18 }}><a className="landing-button" href="https://t.me/fcad_ss_bot" target="_blank" rel="noopener" style={{ fontSize: 15, padding: '12px 22px' }}>Стать частью студсовета</a></div><div className="landing-actions"><a className="landing-button" href="#admission" onClick={(e) => { e.preventDefault(); scrollToSection('admission'); }}>Поступившим — важно</a></div></div></section>
 
         <Section id="about" eyebrow="ФКП БГУИР" title="О факультете"><div className="landing-grid"><div className="landing-card"><h3>Компьютерное проектирование</h3><p>Факультет готовит специалистов в области компьютерного проектирования, программной инженерии и информационных технологий. Здесь учатся создавать решения, которые работают за пределами учебной аудитории.</p></div><div className="landing-card"><h3>Студенческая жизнь</h3><p>БГУИР — это лекции, проекты, спорт, творчество, новые знакомства и команды, в которых можно найти своё направление.</p></div><div className="landing-card"><h3>Студенческий совет ФКП</h3><p>Помогает первокурсникам адаптироваться, представляет интересы студентов, организует события и связывает студентов с факультетом.</p></div></div></Section>
 
