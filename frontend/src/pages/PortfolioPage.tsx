@@ -91,9 +91,19 @@ function Section({ id, eyebrow, title, children, dark = false }: { id: string; e
 
 export default function PortfolioPage() {
   const [events, setEvents] = useState<any[]>([]);
+  const [navVisible, setNavVisible] = useState(false);
   useEffect(() => {
     fetch('/api/events').then((r) => r.json()).then((data) => setEvents(data.filter((e: any) => e.status === 'PUBLISHED').slice(0, 3))).catch(() => {});
   }, []);
+  useEffect(() => {
+    const onScroll = () => setNavVisible(window.scrollY > 36);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   return (
     <div className="landing-page">
@@ -101,7 +111,8 @@ export default function PortfolioPage() {
         @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700&display=swap');
         html { scroll-behavior: smooth; }
         .landing-page { min-height: 100vh; background: #0b0c12; color: #eef0f8; font-family: Onest, system-ui, sans-serif; overflow-x: hidden; }
-        .landing-nav { position: sticky; top: 0; z-index: 20; background: rgba(11,12,18,.82); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255,255,255,.08); }
+        .landing-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: rgba(11,12,18,.82); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255,255,255,.08); transform: translateY(-105%); transition: transform .45s cubic-bezier(.2,.75,.25,1); }
+        .landing-nav.visible { transform: translateY(0); }
         .landing-nav-inner { max-width: 1180px; height: 68px; margin: auto; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
         .landing-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 800; white-space: nowrap; }
         .landing-brand img { width: 38px; height: 38px; }
@@ -110,6 +121,8 @@ export default function PortfolioPage() {
         .landing-links a { color: #a6aabd; text-decoration: none; font-size: 12px; white-space: nowrap; transition: color .2s; }
         .landing-links a:hover { color: white; }
         .landing-hero { min-height: 82vh; display: grid; place-items: center; text-align: center; padding: 110px 22px 90px; background: radial-gradient(circle at 50% 20%, rgba(123,110,246,.3), transparent 42%), linear-gradient(140deg,#0b0c12,#17152a 55%,#0b0c12); }
+        .landing-orb { position: absolute; top: 14%; right: 7%; width: 210px; height: 210px; border-radius: 50%; display: grid; place-items: center; color: rgba(209,205,255,.48); font-family: Unbounded, sans-serif; font-size: 19px; letter-spacing: -.08em; filter: blur(1.5px); background: radial-gradient(circle at 35% 30%, rgba(169,158,255,.4), rgba(77,67,178,.08) 62%, transparent 70%); box-shadow: 0 0 90px rgba(123,110,246,.24); animation: orbDrift 11s ease-in-out infinite; pointer-events: none; }
+        @keyframes orbDrift { 0%,100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(-28px,48px,0) rotate(8deg); } }
         .landing-hero > div { animation: landingHeroIn .9s cubic-bezier(.2,.75,.25,1) both; }
         @keyframes landingHeroIn { from { opacity: 0; transform: translateY(24px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .landing-hero h1 { max-width: 1000px; margin: 0 auto 24px; font-family: Unbounded, sans-serif; font-size: clamp(38px,8vw,92px); line-height: 1.05; letter-spacing: -.07em; }
@@ -138,10 +151,10 @@ export default function PortfolioPage() {
         @media (max-width: 700px) { .landing-nav-inner { height: 60px; padding: 0 14px; } .landing-brand span { display: none; } .landing-section { padding: 68px 16px; } .landing-hero { min-height: 78vh; padding: 80px 18px; } }
       `}</style>
 
-      <nav className="landing-nav"><div className="landing-nav-inner"><a className="landing-brand" href="#top"><img src="/fcad.svg" alt="ФКП" /><span>ФКП БГУИР</span></a><div className="landing-links">{[['О факультете','about'],['Поступление','admission'],['Администрация','administration'],['Активности','activities'],['Студсовет','council'],['Сектора','sectors'],['Расписание','schedule'],['Словарь','slang'],['Общежития','dormitory']].map(([label,id]) => <a key={id} href={`#${id}`}>{label}</a>)}</div></div></nav>
+      <nav className={`landing-nav${navVisible ? ' visible' : ''}`}><div className="landing-nav-inner"><a className="landing-brand" href="#top" onClick={(e) => { e.preventDefault(); scrollToSection('top'); }}><span style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 16 }}>ФКП БГУИР</span></a><div className="landing-links">{[['О факультете','about'],['Поступление','admission'],['Администрация','administration'],['Активности','activities'],['Студсовет','council'],['Сектора','sectors'],['Расписание','schedule'],['Словарь','slang'],['Общежития','dormitory']].map(([label,id]) => <a key={id} href={`#${id}`} onClick={(e) => { e.preventDefault(); scrollToSection(id); }}>{label}</a>)}</div></div></nav>
 
       <main id="top">
-        <section className="landing-hero"><div><h1>ФКП БГУИР</h1><p>Факультет компьютерного проектирования — место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div className="landing-actions"><a className="landing-button" href="#admission">Поступившим — важно</a><a className="landing-button alt" href="#council">Познакомиться со студсоветом</a></div></div></section>
+        <section className="landing-hero" style={{ position: 'relative', overflow: 'hidden' }}><div className="landing-orb">ФКП</div><div style={{ position: 'relative', zIndex: 1 }}><h1>ФКП БГУИР</h1><p>Факультет компьютерного проектирования — место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div className="landing-actions"><a className="landing-button" href="#admission" onClick={(e) => { e.preventDefault(); scrollToSection('admission'); }}>Поступившим — важно</a><a className="landing-button alt" href="#council" onClick={(e) => { e.preventDefault(); scrollToSection('council'); }}>Познакомиться со студсоветом</a></div></div></section>
 
         <Section id="about" eyebrow="ФКП БГУИР" title="О факультете"><div className="landing-grid"><div className="landing-card"><h3>Компьютерное проектирование</h3><p>Факультет готовит специалистов в области компьютерного проектирования, программной инженерии и информационных технологий. Здесь учатся создавать решения, которые работают за пределами учебной аудитории.</p></div><div className="landing-card"><h3>Студенческая жизнь</h3><p>БГУИР — это лекции, проекты, спорт, творчество, новые знакомства и команды, в которых можно найти своё направление.</p></div><div className="landing-card"><h3>Студенческий совет ФКП</h3><p>Помогает первокурсникам адаптироваться, представляет интересы студентов, организует события и связывает студентов с факультетом.</p></div></div></Section>
 
@@ -151,7 +164,7 @@ export default function PortfolioPage() {
 
         <Section id="activities" eyebrow="Возможности" title="Студенческие активы" dark><div className="landing-grid">{activities.map(([name, text]) => <article className="landing-card" key={name}><h3>{name}</h3><p>{text}</p></article>)}</div></Section>
 
-        <Section id="council" eyebrow="Команда" title="Студенческий совет ФКП"><p style={{ color: '#b5b7c6', maxWidth: 650, lineHeight: 1.7, marginBottom: 30 }}>С уважением, Студенческий совет ФКП. В совете есть несколько секторов, где можно найти команду, попробовать себя и сделать факультет ярче.</p><div className="landing-grid">{councilMembers.map(([name, role, sector, photo]) => <article className="landing-card landing-person" key={name}><img src={photo} alt={name} /><h3>{name}</h3><div className="landing-meta">{role} · {sector}</div></article>)}</div></Section>
+        <Section id="council" eyebrow="Команда" title="Студенческий совет ФКП"><p style={{ color: '#b5b7c6', maxWidth: 650, lineHeight: 1.7, marginBottom: 30 }}>С уважением, Студенческий совет ФКП. В совете есть несколько секторов, где можно найти команду, попробовать себя и сделать факультет ярче.</p><div className="landing-grid">{councilMembers.map(([name, role, sector, photo]) => <article className="landing-card landing-person" key={name}>{photo ? <img src={photo} alt={name} referrerPolicy="no-referrer" /> : <div className="landing-person-placeholder">{name[0]}</div>}<h3>{name}</h3><div className="landing-meta">{role} · {sector}</div></article>)}</div></Section>
 
         <Section id="sectors" eyebrow="Направления" title="Сектора студсовета" dark><div className="landing-grid">{sections.map(([name, text]) => <article className="landing-card" key={name}><h3>💜 {name}</h3><p>{text}</p></article>)}</div><div className="landing-notice" style={{ marginTop: 20 }}>В начале сентября будет собрание, где координаторы расскажут о секторах подробнее, а позже пройдёт отбор.</div></Section>
 
