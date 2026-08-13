@@ -80,9 +80,10 @@ router.post('/scan', async (req: Request, res: Response) => {
       include: {
         event: {
           select: {
-            id: true, name: true, eventDate: true, pointsForAttendance: true, status: true, createdBy: true,
+            id: true, name: true, eventDate: true, pointsForAttendance: true, pointsForOrganization: true, status: true, createdBy: true,
             scannerAssignments: { select: { coordinatorId: true } },
             studentScannerAssignments: { select: { studentId: true } },
+            organizerAssignments: { select: { studentId: true } },
           },
         },
         student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } },
@@ -140,7 +141,8 @@ router.post('/scan', async (req: Request, res: Response) => {
         data: { attended: true },
       });
 
-      if (application.event.pointsForAttendance > 0) {
+      const awardedPoints = application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance;
+      if (awardedPoints > 0) {
         const existingPoints = await prisma.pointTransaction.findFirst({
           where: { studentId: application.studentId, eventId: application.eventId, type: 'ATTENDANCE', status: 'ACTIVE' },
         });
@@ -149,7 +151,7 @@ router.post('/scan', async (req: Request, res: Response) => {
           await prisma.pointTransaction.create({
             data: {
               studentId: application.studentId,
-              points: application.event.pointsForAttendance,
+              points: application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance,
               type: 'ATTENDANCE',
               eventId: application.eventId,
               reason: `Посещение: ${application.event.name}`,
@@ -159,7 +161,7 @@ router.post('/scan', async (req: Request, res: Response) => {
           const { sendPointsAwarded, checkMilestone } = await import('../services/bot');
           const balanceRows = await prisma.pointTransaction.findMany({ where: { studentId: application.studentId, status: 'ACTIVE' }, select: { points: true } });
           const balance = balanceRows.reduce((sum, row) => sum + row.points, 0);
-          await sendPointsAwarded(application.student, application.event.pointsForAttendance, `Посещение: ${application.event.name}`, balance);
+          await sendPointsAwarded(application.student, awardedPoints, `Посещение: ${application.event.name}`, balance);
           await checkMilestone(application.studentId);
         }
       }
@@ -167,7 +169,7 @@ router.post('/scan', async (req: Request, res: Response) => {
       const bot = (await import('../services/bot')).getBot();
       if (bot && application.student.chatId) {
         const dateStr = new Date(application.event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const msg = `✅ *Посещение подтверждено!*\n━━━━━━━━━━━━━━━━━━━━\n🎭 Мероприятие: *${application.event.name}*\n📅 Дата: *${dateStr}*\n💰 Баллы: *+${application.event.pointsForAttendance}*`;
+        const msg = `✅ *Посещение подтверждено!*\n━━━━━━━━━━━━━━━━━━━━\n🎭 Мероприятие: *${application.event.name}*\n📅 Дата: *${dateStr}*\n💰 Баллы: *+${awardedPoints}*`;
         try { await bot.sendMessage(application.student.chatId, msg, { parse_mode: 'Markdown' }); } catch (_) {}
       }
 
@@ -176,8 +178,8 @@ router.post('/scan', async (req: Request, res: Response) => {
         type: 'CHECK_OUT',
         student: application.student,
         event: application.event,
-        pointsAwarded: application.event.pointsForAttendance,
-        message: `Выход отмечен: ${application.student.fullName}. Начислено ${application.event.pointsForAttendance} баллов.`,
+        pointsAwarded: awardedPoints,
+        message: `Выход отмечен: ${application.student.fullName}. Начислено ${awardedPoints} баллов.`,
       });
     }
 
@@ -235,9 +237,10 @@ router.post('/manual-check', async (req: Request, res: Response) => {
       include: {
         event: {
           select: {
-            id: true, name: true, eventDate: true, pointsForAttendance: true, status: true, createdBy: true,
+            id: true, name: true, eventDate: true, pointsForAttendance: true, pointsForOrganization: true, status: true, createdBy: true,
             scannerAssignments: { select: { coordinatorId: true } },
             studentScannerAssignments: { select: { studentId: true } },
+            organizerAssignments: { select: { studentId: true } },
           },
         },
         student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } },
@@ -282,7 +285,8 @@ router.post('/manual-check', async (req: Request, res: Response) => {
         data: { attended: true },
       });
 
-      if (application.event.pointsForAttendance > 0) {
+      const awardedPoints = application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance;
+      if (awardedPoints > 0) {
         const existingPoints = await prisma.pointTransaction.findFirst({
           where: { studentId: application.studentId, eventId: application.eventId, type: 'ATTENDANCE', status: 'ACTIVE' },
         });
@@ -291,7 +295,7 @@ router.post('/manual-check', async (req: Request, res: Response) => {
           await prisma.pointTransaction.create({
             data: {
               studentId: application.studentId,
-              points: application.event.pointsForAttendance,
+              points: application.event.organizerAssignments.some((o) => o.studentId === application.studentId) ? application.event.pointsForOrganization : application.event.pointsForAttendance,
               type: 'ATTENDANCE',
               eventId: application.eventId,
               reason: `Посещение: ${application.event.name}`,
@@ -301,7 +305,7 @@ router.post('/manual-check', async (req: Request, res: Response) => {
           const { sendPointsAwarded, checkMilestone } = await import('../services/bot');
           const balanceRows = await prisma.pointTransaction.findMany({ where: { studentId: application.studentId, status: 'ACTIVE' }, select: { points: true } });
           const balance = balanceRows.reduce((sum, row) => sum + row.points, 0);
-          await sendPointsAwarded(application.student, application.event.pointsForAttendance, `Посещение: ${application.event.name}`, balance);
+          await sendPointsAwarded(application.student, awardedPoints, `Посещение: ${application.event.name}`, balance);
           await checkMilestone(application.studentId);
         }
       }

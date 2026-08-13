@@ -45,6 +45,7 @@ enum EventAudience {
   SS
   FKP
   ALL
+  ORGANIZERS
 }
 
 enum ParticipationType {
@@ -141,6 +142,7 @@ model Student {
   eventApplications  EventApplication[]
   pointTransactions  PointTransaction[]
   scannerAssignments EventStudentScanner[]
+  organizerAssignments EventOrganizer[]
 }
 
 model Exemption {
@@ -183,6 +185,7 @@ model Event {
   scannerCoordinator Coordinator? @relation("ScannerCoordinator", fields: [scannerCoordinatorId], references: [id])
   scannerAssignments EventScannerCoordinator[]
   studentScannerAssignments EventStudentScanner[]
+  organizerAssignments EventOrganizer[]
   participants EventParticipant[]
 
   createdAt DateTime @default(now())
@@ -191,6 +194,7 @@ model Event {
   endDate            DateTime?
   registrationDeadline DateTime?
   pointsForAttendance Int     @default(0)
+  pointsForOrganization Int  @default(0)
   maxParticipants    Int?
   status             EventStatus @default(DRAFT)
   audience           EventAudience @default(ALL)
@@ -213,6 +217,16 @@ model EventScannerCoordinator {
 }
 
 model EventStudentScanner {
+  eventId   Int
+  studentId Int
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, studentId])
+  @@index([studentId])
+}
+
+model EventOrganizer {
   eventId   Int
   studentId Int
   event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)

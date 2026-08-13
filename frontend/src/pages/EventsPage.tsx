@@ -47,9 +47,9 @@ export default function EventsPage({ coordinator }: Props) {
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
-  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[], studentScannerIds: [] as number[] });
+  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, pointsForOrganization: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[], studentScannerIds: [] as number[], organizerStudentIds: [] as number[] });
   const [newParticipant, setNewParticipant] = useState({ fullName: '', groupNumber: '' });
-  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[], studentScannerIds: [] as number[] });
+  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, pointsForOrganization: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[], studentScannerIds: [] as number[], organizerStudentIds: [] as number[] });
   const [exemptionDate, setExemptionDate] = useState('');
   const [exemptionReason, setExemptionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -103,8 +103,8 @@ export default function EventsPage({ coordinator }: Props) {
     if (!newEvent.name || !newEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.create({ ...newEvent, status: statusOverride || newEvent.status, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: newEvent.scannerCoordinatorIds.length ? newEvent.scannerCoordinatorIds : [coordinator.id], scannerCoordinatorId: newEvent.scannerCoordinatorIds[0] || coordinator.id, studentScannerIds: newEvent.studentScannerIds });
-      setNewEvent({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [], studentScannerIds: [] });
+      await api.events.create({ ...newEvent, status: statusOverride || newEvent.status, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: newEvent.scannerCoordinatorIds.length ? newEvent.scannerCoordinatorIds : [coordinator.id], scannerCoordinatorId: newEvent.scannerCoordinatorIds[0] || coordinator.id, studentScannerIds: newEvent.studentScannerIds, organizerStudentIds: newEvent.organizerStudentIds });
+      setNewEvent({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, pointsForOrganization: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [], studentScannerIds: [], organizerStudentIds: [] });
       setStep('list');
       await loadEvents();
     } catch (e: any) { alert(e.message); }
@@ -115,7 +115,7 @@ export default function EventsPage({ coordinator }: Props) {
     if (!selectedEvent || !editingEvent.name || !editingEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: editingEvent.scannerCoordinatorIds, scannerCoordinatorId: editingEvent.scannerCoordinatorIds[0] || null, studentScannerIds: editingEvent.studentScannerIds });
+      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: editingEvent.scannerCoordinatorIds, scannerCoordinatorId: editingEvent.scannerCoordinatorIds[0] || null, studentScannerIds: editingEvent.studentScannerIds, organizerStudentIds: editingEvent.organizerStudentIds });
       setStep('list');
       await loadEvents();
     } catch (e: any) { alert(e.message); }
@@ -303,7 +303,7 @@ export default function EventsPage({ coordinator }: Props) {
                           Опубликовать
                         </button>
                       )}
-                     <button                       onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); const assigned = ((ev as any).scannerAssignments || []).map((a: any) => a.coordinator.id); const studentAssigned = ((ev as any).studentScannerAssignments || []).map((a: any) => a.student.id); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '', location: (ev as any).location || '', status: (ev as any).status || 'DRAFT', pointsForAttendance: (ev as any).pointsForAttendance || 0, maxParticipants: (ev as any).maxParticipants || 0, audience: (ev as any).audience || 'ALL', facultyOnly: (ev as any).facultyOnly || false, scannerCoordinatorId: (ev as any).scannerCoordinatorId || 0, scannerCoordinatorIds: assigned.length ? assigned : ((ev as any).scannerCoordinatorId ? [(ev as any).scannerCoordinatorId] : []), studentScannerIds: studentAssigned }); setStep('edit'); }}
+                     <button                       onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); const assigned = ((ev as any).scannerAssignments || []).map((a: any) => a.coordinator.id); const studentAssigned = ((ev as any).studentScannerAssignments || []).map((a: any) => a.student.id); const organizerAssigned = ((ev as any).organizerAssignments || []).map((a: any) => a.student.id); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '', location: (ev as any).location || '', status: (ev as any).status || 'DRAFT', pointsForAttendance: (ev as any).pointsForAttendance || 0, pointsForOrganization: (ev as any).pointsForOrganization || 0, maxParticipants: (ev as any).maxParticipants || 0, audience: (ev as any).audience || 'ALL', facultyOnly: (ev as any).facultyOnly || false, scannerCoordinatorId: (ev as any).scannerCoordinatorId || 0, scannerCoordinatorIds: assigned.length ? assigned : ((ev as any).scannerCoordinatorId ? [(ev as any).scannerCoordinatorId] : []), studentScannerIds: studentAssigned, organizerStudentIds: organizerAssigned }); setStep('edit'); }}
                         style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 15 }}>
                         ✎
                       </button>
@@ -346,8 +346,8 @@ export default function EventsPage({ coordinator }: Props) {
             <div style={{ display: 'flex', gap: 6 }}>
               {[
                 { id: 'ALL', label: 'Все студенты' },
-                { id: 'FKP', label: 'ФКП' },
                 { id: 'SS', label: 'Студсовет' },
+                { id: 'ORGANIZERS', label: 'Организаторы' },
               ].map(a => (
                 <button key={a.id} onClick={() => step === 'create' ? setNewEvent({ ...newEvent, audience: a.id }) : setEditingEvent({ ...editingEvent, audience: a.id })}
                   style={{
@@ -361,6 +361,29 @@ export default function EventsPage({ coordinator }: Props) {
               ))}
             </div>
             </Field>
+            {(step === 'create' ? newEvent.audience : editingEvent.audience) === 'ORGANIZERS' && (
+              <Field label="Организаторы мероприятия">
+              <div className="scanner-picker">
+                {councilStudents.map(s => {
+                  const selected = (step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).includes(s.id);
+                  return (
+                    <button key={`org-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
+                      onClick={() => {
+                        const current = step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds;
+                        const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
+                        step === 'create'
+                          ? setNewEvent({ ...newEvent, organizerStudentIds: next })
+                          : setEditingEvent({ ...editingEvent, organizerStudentIds: next });
+                      }}>
+                      <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
+                      <span>{s.fullName}</span>
+                    </button>
+                  );
+                })}
+                <div className="scanner-picker-hint">Выберите студентов-организаторов</div>
+              </div>
+              </Field>
+            )}
             <Field label="Баллы за посещение">
             <input className="input" type="number" min={0} placeholder="0"
               value={step === 'create' ? newEvent.pointsForAttendance || '' : editingEvent.pointsForAttendance || ''}
@@ -369,6 +392,16 @@ export default function EventsPage({ coordinator }: Props) {
                 step === 'create' ? setNewEvent({ ...newEvent, pointsForAttendance: v }) : setEditingEvent({ ...editingEvent, pointsForAttendance: v });
               }} />
             </Field>
+            {(step === 'create' ? newEvent.audience : editingEvent.audience) === 'ORGANIZERS' && (
+              <Field label="Баллы за организацию">
+              <input className="input" type="number" min={0} placeholder="0"
+                value={step === 'create' ? newEvent.pointsForOrganization || '' : editingEvent.pointsForOrganization || ''}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value) || 0;
+                  step === 'create' ? setNewEvent({ ...newEvent, pointsForOrganization: v }) : setEditingEvent({ ...editingEvent, pointsForOrganization: v });
+                }} />
+              </Field>
+            )}
             <Field label="Макс. участников">
             <input className="input" type="number" min={0} placeholder="Без ограничений"
               value={step === 'create' ? newEvent.maxParticipants || '' : editingEvent.maxParticipants || ''}

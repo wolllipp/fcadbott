@@ -11,6 +11,7 @@ interface StudentInfo {
   fullName: string;
   groupNumber: string;
   studentCardNumber: string;
+  budgetStatus?: string;
 }
 
 interface EventData {
@@ -267,6 +268,8 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
   });
 
   const hasActivePetition = petitions.some((p) => p.status === 'PENDING');
+  const submittedPetitionTypes = new Set(petitions.map((p) => p.type));
+  const availablePetitionTypes = PETITION_TYPES.filter((type) => type !== 'DISCOUNT' || student.budgetStatus !== 'BUDGET').filter((type) => !submittedPetitionTypes.has(type));
 
   const myApps = applications.filter(a => a.status !== 'CANCELLED');
   const pendingApps = myApps.filter(a => a.status === 'PENDING');
@@ -614,13 +617,13 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </div>
             )}
 
-            {balance && balance.balance >= 100 && !hasActivePetition && (
+            {balance && balance.balance >= 100 && availablePetitionTypes.length > 0 && (
               <button className="btn btn-primary" onClick={() => setShowPetitionModal(true)} style={{ background: 'var(--success)' }}>
                 Подать ходатайство
               </button>
             )}
 
-            {hasActivePetition && (
+            {hasActivePetition && availablePetitionTypes.length === 0 && (
               <div style={{ textAlign: 'center', padding: 16, color: 'var(--warning)', fontSize: 14, fontWeight: 600 }}>
                 Ходатайство на рассмотрении
               </div>
@@ -693,13 +696,18 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
             </div>
             {PETITION_TYPES.map((t) => {
               const checked = selectedPetitionTypes.has(t);
+              const unavailableForBudget = t === 'DISCOUNT' && student.budgetStatus === 'BUDGET';
+              const alreadySubmitted = submittedPetitionTypes.has(t);
+              const disabled = unavailableForBudget || alreadySubmitted;
               return (
                 <div key={t} className="card" style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '12px',
                   cursor: 'pointer',
                   borderColor: checked ? 'var(--accent)' : 'var(--border)',
-                  background: checked ? 'var(--accent-dim)' : 'var(--bg-card)',
+                  background: disabled ? 'var(--bg-raised)' : checked ? 'var(--accent-dim)' : 'var(--bg-card)',
+                  opacity: disabled ? 0.55 : 1,
                 }} onClick={() => {
+                  if (disabled) return;
                   const next = new Set<string>();
                   if (!checked) {
                     next.add(t);
@@ -715,11 +723,11 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
                   }}>
                     {checked && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
-                  <span style={{ fontWeight: 500, fontSize: 14 }}>Ходатайство {PETITION_LABELS[t]}</span>
+                  <span style={{ fontWeight: 500, fontSize: 14 }}>Ходатайство {PETITION_LABELS[t]}{unavailableForBudget ? ' · бюджет недоступен' : alreadySubmitted ? ' · уже подавали' : ''}</span>
                 </div>
               );
             })}
-            <button className="btn btn-primary" disabled={selectedPetitionTypes.size === 0 || submittingPetition}
+            <button className="btn btn-primary" disabled={selectedPetitionTypes.size === 0 || availablePetitionTypes.length === 0 || submittingPetition}
               onClick={submitPetition} style={{ marginTop: 4 }}>
               {submittingPetition ? '...' : `Отправить (${selectedPetitionTypes.size})`}
             </button>

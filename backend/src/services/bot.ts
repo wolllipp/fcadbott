@@ -235,7 +235,7 @@ export async function sendPetitionPending(petition: any) {
 export async function sendNewEvent(event: any) {
   if (!bot) return;
   const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const audienceLabel: Record<string, string> = { SS: 'студсовета', FKP: 'ФКП', ALL: 'всех студентов' };
+  const audienceLabel: Record<string, string> = { SS: 'студсовета', FKP: 'ФКП', ALL: 'всех студентов', ORGANIZERS: 'организаторов' };
   const message =
     `🎉 *Новое мероприятие!*\n━━━━━━━━━━━━━━━━━━━━\n📌 *${event.name}*\n📅 Дата: *${dateStr}*\n${event.location ? `📍 ${event.location}\n` : ''}${event.description ? `📝 ${event.description}\n` : ''}👥 Для: *${audienceLabel[event.audience] || 'всех'}*\n\n✍️ Записаться через приложение студсовета: @fcadbot\\_bot`;
   const options = {
@@ -245,7 +245,13 @@ export async function sendNewEvent(event: any) {
 
   try {
     let students;
-    if (event.audience === 'SS') {
+    if (event.audience === 'ORGANIZERS') {
+      const eventWithOrganizers = await prisma.event.findUnique({
+        where: { id: event.id },
+        include: { organizerAssignments: { include: { student: true } } },
+      });
+      students = (eventWithOrganizers?.organizerAssignments || []).map((o: any) => o.student).filter((s: any) => s.chatId);
+    } else if (event.audience === 'SS') {
       students = await prisma.student.findMany({
         where: { chatId: { not: null }, sectors: { isEmpty: false } },
       });

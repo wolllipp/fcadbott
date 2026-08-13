@@ -20,6 +20,7 @@ router.get('/', async (req: Request, res: Response) => {
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
         studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
+        organizerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
       orderBy: { eventDate: 'desc' },
     });
@@ -32,12 +33,13 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds, studentScannerIds } = req.body;
+    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, pointsForOrganization, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds, studentScannerIds, organizerStudentIds } = req.body;
     if (!name || !eventDate) return res.status(400).json({ error: 'name and eventDate required' });
     if (!coordinatorId) return res.status(400).json({ error: 'coordinatorId required' });
 
     const assignedScannerIds = scannerIds(scannerCoordinatorIds ?? scannerCoordinatorId, coordinatorId);
     const assignedStudentScannerIds = Array.isArray(studentScannerIds) ? studentScannerIds.map(Number).filter((id: number) => Number.isInteger(id) && id > 0) : [];
+    const assignedOrganizerIds = Array.isArray(organizerStudentIds) ? organizerStudentIds.map(Number).filter((id: number) => Number.isInteger(id) && id > 0) : [];
     const event = await prisma.event.create({
       data: {
         name,
@@ -47,9 +49,11 @@ router.post('/', async (req: Request, res: Response) => {
         scannerCoordinatorId: scannerCoordinatorId || coordinatorId,
         scannerAssignments: { create: assignedScannerIds.map((coordinatorId) => ({ coordinatorId })) },
         studentScannerAssignments: { create: assignedStudentScannerIds.map((studentId) => ({ studentId })) },
+        organizerAssignments: { create: assignedOrganizerIds.map((studentId) => ({ studentId })) },
         location: location || null,
         status: status || 'DRAFT',
         pointsForAttendance: pointsForAttendance || 0,
+        pointsForOrganization: pointsForOrganization || 0,
         maxParticipants: maxParticipants || null,
         audience: audience || 'ALL',
         facultyOnly: facultyOnly || false,
@@ -61,6 +65,7 @@ router.post('/', async (req: Request, res: Response) => {
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
         studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
+        organizerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
     });
 
@@ -78,7 +83,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds, studentScannerIds } = req.body;
+    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, pointsForOrganization, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds, studentScannerIds, organizerStudentIds } = req.body;
     const id = Number(req.params.id);
     const isAdmin = role && !['COORDINATOR'].includes(role as string);
 
@@ -93,6 +98,9 @@ router.put('/:id', async (req: Request, res: Response) => {
     const assignedStudentScannerIds = studentScannerIds !== undefined
       ? (Array.isArray(studentScannerIds) ? studentScannerIds.map(Number).filter((id: number) => Number.isInteger(id) && id > 0) : [])
       : null;
+    const assignedOrganizerIds = organizerStudentIds !== undefined
+      ? (Array.isArray(organizerStudentIds) ? organizerStudentIds.map(Number).filter((id: number) => Number.isInteger(id) && id > 0) : [])
+      : null;
     const event = await prisma.event.update({
       where: { id },
       data: {
@@ -102,6 +110,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...(location !== undefined && { location }),
         ...(status !== undefined && { status }),
         ...(pointsForAttendance !== undefined && { pointsForAttendance }),
+        ...(pointsForOrganization !== undefined && { pointsForOrganization }),
         ...(maxParticipants !== undefined && { maxParticipants: maxParticipants || null }),
         ...(audience !== undefined && { audience }),
         ...(facultyOnly !== undefined && { facultyOnly }),
@@ -119,6 +128,12 @@ router.put('/:id', async (req: Request, res: Response) => {
             create: assignedStudentScannerIds.map((studentId) => ({ studentId })),
           },
         }),
+        ...(assignedOrganizerIds && {
+          organizerAssignments: {
+            deleteMany: {},
+            create: assignedOrganizerIds.map((studentId) => ({ studentId })),
+          },
+        }),
       },
       include: {
         participants: true,
@@ -126,6 +141,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
         studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
+        organizerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
     });
 

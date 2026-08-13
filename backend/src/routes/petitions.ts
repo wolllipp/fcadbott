@@ -14,6 +14,17 @@ router.post('/', async (req: Request, res: Response) => {
     const student = await prisma.student.findUnique({ where: { id: studentId } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
+    if (type === 'DISCOUNT' && student.budgetStatus === 'BUDGET') {
+      return res.status(400).json({ error: 'Студенты на бюджете не могут подать ходатайство на скидку' });
+    }
+
+    const alreadySubmitted = await prisma.petition.findFirst({
+      where: { studentId, type },
+    });
+    if (alreadySubmitted) {
+      return res.status(409).json({ error: 'Вы уже подавали ходатайство этого типа' });
+    }
+
     const activeTransactions = await prisma.pointTransaction.findMany({
       where: { studentId, status: 'ACTIVE' },
       include: { event: { select: { name: true } } },
@@ -23,13 +34,6 @@ router.post('/', async (req: Request, res: Response) => {
     const balance = activeTransactions.reduce((sum, t) => sum + t.points, 0);
     if (balance < 100) {
       return res.status(400).json({ error: `Недостаточно баллов: ${balance}/100` });
-    }
-
-    const existingPending = await prisma.petition.findFirst({
-      where: { studentId, status: { in: ['PENDING', 'DRAFT'] } },
-    });
-    if (existingPending) {
-      return res.status(409).json({ error: 'У вас уже есть активное ходатайство' });
     }
 
     const petition = await prisma.petition.create({
