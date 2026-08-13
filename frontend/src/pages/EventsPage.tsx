@@ -47,9 +47,9 @@ export default function EventsPage({ coordinator }: Props) {
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
-  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[] });
+  const [newEvent, setNewEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[], studentScannerIds: [] as number[] });
   const [newParticipant, setNewParticipant] = useState({ fullName: '', groupNumber: '' });
-  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[] });
+  const [editingEvent, setEditingEvent] = useState({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] as number[], studentScannerIds: [] as number[] });
   const [exemptionDate, setExemptionDate] = useState('');
   const [exemptionReason, setExemptionReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -95,8 +95,8 @@ export default function EventsPage({ coordinator }: Props) {
     if (!newEvent.name || !newEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.create({ ...newEvent, status: statusOverride || newEvent.status, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: newEvent.scannerCoordinatorIds.length ? newEvent.scannerCoordinatorIds : [coordinator.id], scannerCoordinatorId: newEvent.scannerCoordinatorIds[0] || coordinator.id });
-      setNewEvent({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [] });
+      await api.events.create({ ...newEvent, status: statusOverride || newEvent.status, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: newEvent.scannerCoordinatorIds.length ? newEvent.scannerCoordinatorIds : [coordinator.id], scannerCoordinatorId: newEvent.scannerCoordinatorIds[0] || coordinator.id, studentScannerIds: newEvent.studentScannerIds });
+      setNewEvent({ name: '', eventDate: '', description: '', location: '', status: 'DRAFT', pointsForAttendance: 0, maxParticipants: 0, audience: 'ALL', facultyOnly: false, scannerCoordinatorId: 0, scannerCoordinatorIds: [], studentScannerIds: [] });
       setStep('list');
       await loadEvents();
     } catch (e: any) { alert(e.message); }
@@ -107,7 +107,7 @@ export default function EventsPage({ coordinator }: Props) {
     if (!selectedEvent || !editingEvent.name || !editingEvent.eventDate) return;
     setSubmitting(true);
     try {
-      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: editingEvent.scannerCoordinatorIds, scannerCoordinatorId: editingEvent.scannerCoordinatorIds[0] || null });
+      await api.events.update(selectedEvent.id, { ...editingEvent, coordinatorId: coordinator.id, role: coordinator.role, scannerCoordinatorIds: editingEvent.scannerCoordinatorIds, scannerCoordinatorId: editingEvent.scannerCoordinatorIds[0] || null, studentScannerIds: editingEvent.studentScannerIds });
       setStep('list');
       await loadEvents();
     } catch (e: any) { alert(e.message); }
@@ -285,7 +285,7 @@ export default function EventsPage({ coordinator }: Props) {
                           Опубликовать
                         </button>
                       )}
-                     <button                       onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); const assigned = ((ev as any).scannerAssignments || []).map((a: any) => a.coordinator.id); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '', location: (ev as any).location || '', status: (ev as any).status || 'DRAFT', pointsForAttendance: (ev as any).pointsForAttendance || 0, maxParticipants: (ev as any).maxParticipants || 0, audience: (ev as any).audience || 'ALL', facultyOnly: (ev as any).facultyOnly || false, scannerCoordinatorId: (ev as any).scannerCoordinatorId || 0, scannerCoordinatorIds: assigned.length ? assigned : ((ev as any).scannerCoordinatorId ? [(ev as any).scannerCoordinatorId] : []) }); setStep('edit'); }}
+                     <button                       onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); const assigned = ((ev as any).scannerAssignments || []).map((a: any) => a.coordinator.id); const studentAssigned = ((ev as any).studentScannerAssignments || []).map((a: any) => a.student.id); setEditingEvent({ name: ev.name, eventDate: ev.eventDate.slice(0, 10), description: ev.description || '', location: (ev as any).location || '', status: (ev as any).status || 'DRAFT', pointsForAttendance: (ev as any).pointsForAttendance || 0, maxParticipants: (ev as any).maxParticipants || 0, audience: (ev as any).audience || 'ALL', facultyOnly: (ev as any).facultyOnly || false, scannerCoordinatorId: (ev as any).scannerCoordinatorId || 0, scannerCoordinatorIds: assigned.length ? assigned : ((ev as any).scannerCoordinatorId ? [(ev as any).scannerCoordinatorId] : []), studentScannerIds: studentAssigned }); setStep('edit'); }}
                         style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 15 }}>
                         ✎
                       </button>
@@ -360,10 +360,11 @@ export default function EventsPage({ coordinator }: Props) {
             </Field>
             <Field label="Отмечающий на мероприятии">
             <div className="scanner-picker">
+              <div className="section-label" style={{ marginBottom: 4 }}>Координаторы</div>
               {coordinatorsList.map(c => {
                 const selected = (step === 'create' ? newEvent.scannerCoordinatorIds : editingEvent.scannerCoordinatorIds).includes(c.id);
                 return (
-                  <button key={c.id} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
+                  <button key={`coord-${c.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
                     onClick={() => {
                       const current = step === 'create' ? newEvent.scannerCoordinatorIds : editingEvent.scannerCoordinatorIds;
                       const next = selected ? current.filter(id => id !== c.id) : [...current, c.id];
@@ -376,14 +377,34 @@ export default function EventsPage({ coordinator }: Props) {
                   </button>
                 );
               })}
-              <div className="scanner-picker-hint">Выберите одного или нескольких координаторов</div>
+              <div className="section-label" style={{ marginBottom: 4, marginTop: 8 }}>Студенты</div>
+              {councilStudents.map(s => {
+                const selected = (step === 'create' ? newEvent.studentScannerIds : editingEvent.studentScannerIds).includes(s.id);
+                return (
+                  <button key={`stud-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
+                    onClick={() => {
+                      const current = step === 'create' ? newEvent.studentScannerIds : editingEvent.studentScannerIds;
+                      const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
+                      step === 'create'
+                        ? setNewEvent({ ...newEvent, studentScannerIds: next })
+                        : setEditingEvent({ ...editingEvent, studentScannerIds: next });
+                    }}>
+                    <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
+                    <span>{s.fullName}</span>
+                  </button>
+                );
+              })}
+              <div className="scanner-picker-hint">Выберите отмечающих — координаторов или студентов</div>
             </div>
             </Field>
             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
               {step === 'create' ? (
                 <>
+                   <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => createEvent('DRAFT')} disabled={submitting || !(newEvent.name && newEvent.eventDate)}>
+                     {submitting ? '...' : 'Черновик'}
+                   </button>
                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => createEvent('PUBLISHED')} disabled={submitting || !(newEvent.name && newEvent.eventDate)}>
-                     {submitting ? '...' : 'Сохранить и опубликовать'}
+                     {submitting ? '...' : 'Опубликовать'}
                    </button>
                 </>
               ) : (

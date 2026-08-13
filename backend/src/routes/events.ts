@@ -18,6 +18,8 @@ router.get('/', async (req: Request, res: Response) => {
         participants: true,
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
+        scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
+        studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
       orderBy: { eventDate: 'desc' },
     });
@@ -30,11 +32,12 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds } = req.body;
+    const { name, eventDate, description, coordinatorId, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds, studentScannerIds } = req.body;
     if (!name || !eventDate) return res.status(400).json({ error: 'name and eventDate required' });
     if (!coordinatorId) return res.status(400).json({ error: 'coordinatorId required' });
 
     const assignedScannerIds = scannerIds(scannerCoordinatorIds ?? scannerCoordinatorId, coordinatorId);
+    const assignedStudentScannerIds = Array.isArray(studentScannerIds) ? studentScannerIds.map(Number).filter((id: number) => Number.isInteger(id) && id > 0) : [];
     const event = await prisma.event.create({
       data: {
         name,
@@ -43,6 +46,7 @@ router.post('/', async (req: Request, res: Response) => {
         createdBy: coordinatorId,
         scannerCoordinatorId: scannerCoordinatorId || coordinatorId,
         scannerAssignments: { create: assignedScannerIds.map((coordinatorId) => ({ coordinatorId })) },
+        studentScannerAssignments: { create: assignedStudentScannerIds.map((studentId) => ({ studentId })) },
         location: location || null,
         status: status || 'DRAFT',
         pointsForAttendance: pointsForAttendance || 0,
@@ -56,6 +60,7 @@ router.post('/', async (req: Request, res: Response) => {
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
+        studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
     });
 
@@ -72,7 +77,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds } = req.body;
+    const { name, eventDate, description, coordinatorId, role, location, status, pointsForAttendance, maxParticipants, audience, facultyOnly, requireApproval, scannerCoordinatorId, scannerCoordinatorIds, studentScannerIds } = req.body;
     const id = Number(req.params.id);
     const isAdmin = role && !['COORDINATOR'].includes(role as string);
 
@@ -83,6 +88,9 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const assignedScannerIds = scannerCoordinatorIds !== undefined || scannerCoordinatorId !== undefined
       ? scannerIds(scannerCoordinatorIds ?? scannerCoordinatorId, existing.createdBy)
+      : null;
+    const assignedStudentScannerIds = studentScannerIds !== undefined
+      ? (Array.isArray(studentScannerIds) ? studentScannerIds.map(Number).filter((id: number) => Number.isInteger(id) && id > 0) : [])
       : null;
     const event = await prisma.event.update({
       where: { id },
@@ -104,12 +112,19 @@ router.put('/:id', async (req: Request, res: Response) => {
             create: assignedScannerIds.map((coordinatorId) => ({ coordinatorId })),
           },
         }),
+        ...(assignedStudentScannerIds && {
+          studentScannerAssignments: {
+            deleteMany: {},
+            create: assignedStudentScannerIds.map((studentId) => ({ studentId })),
+          },
+        }),
       },
       include: {
         participants: true,
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
+        studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
     });
 
@@ -248,6 +263,7 @@ router.get('/by-student', async (req: Request, res: Response) => {
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
+        studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
       orderBy: { eventDate: 'desc' },
     });
@@ -330,6 +346,7 @@ router.post('/:id/finalize-attendance', async (req: Request, res: Response) => {
         creator: { select: { id: true, fullName: true } },
         scannerCoordinator: { select: { id: true, fullName: true, telegramUsername: true } },
         scannerAssignments: { include: { coordinator: { select: { id: true, fullName: true, telegramUsername: true } } } },
+        studentScannerAssignments: { include: { student: { select: { id: true, fullName: true, groupNumber: true } } } },
       },
     });
     res.json(updated);

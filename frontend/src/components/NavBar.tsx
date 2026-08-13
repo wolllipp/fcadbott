@@ -25,7 +25,7 @@ function getTabList(coordinator: Coordinator): { id: Tab; icon: string; label: s
 
   const tabs: { id: Tab; icon: string; label: string }[] = [
     { id: 'home', icon: '⌂', label: 'Главная' },
-    { id: 'sector', icon: '◈', label: isAdmin ? 'Студсовет' : 'Мой сектор' },
+    { id: 'sector', icon: '👥', label: 'Люди' },
     { id: 'exemptions', icon: '◎', label: 'Освобождения' },
     { id: 'bonuses', icon: '◇', label: 'Премии' },
     { id: 'events', icon: '☰', label: 'Мероприятия' },
@@ -33,11 +33,10 @@ function getTabList(coordinator: Coordinator): { id: Tab; icon: string; label: s
     { id: 'scanner', icon: '⊙', label: 'Сканер' },
   ];
 
-  if (canSeePetitions) {
-    tabs.push({ id: 'students', icon: '♙', label: 'Студенты' });
+  if (isAdmin) {
     tabs.push({ id: 'petitions', icon: '✎', label: 'Ходатайства' });
-    tabs.push({ id: 'stats', icon: '◎', label: 'Статистика' });
   }
+  tabs.push({ id: 'stats', icon: '◎', label: 'Статистика' });
 
   return tabs;
 }

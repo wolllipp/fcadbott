@@ -140,6 +140,7 @@ model Student {
   petitions          Petition[]
   eventApplications  EventApplication[]
   pointTransactions  PointTransaction[]
+  scannerAssignments EventStudentScanner[]
 }
 
 model Exemption {
@@ -181,6 +182,7 @@ model Event {
   creator      Coordinator        @relation("EventCreator", fields: [createdBy], references: [id])
   scannerCoordinator Coordinator? @relation("ScannerCoordinator", fields: [scannerCoordinatorId], references: [id])
   scannerAssignments EventScannerCoordinator[]
+  studentScannerAssignments EventStudentScanner[]
   participants EventParticipant[]
 
   createdAt DateTime @default(now())
@@ -208,6 +210,16 @@ model EventScannerCoordinator {
 
   @@id([eventId, coordinatorId])
   @@index([coordinatorId])
+}
+
+model EventStudentScanner {
+  eventId   Int
+  studentId Int
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, studentId])
+  @@index([studentId])
 }
 
 model EventParticipant {

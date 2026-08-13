@@ -24,7 +24,7 @@ declare global {
   }
 }
 
-export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'students' | 'petitions' | 'stats' | 'applications' | 'scanner';
+export type Tab = 'home' | 'exemptions' | 'bonuses' | 'sector' | 'events' | 'council' | 'petitions' | 'stats' | 'applications' | 'scanner';
 
 export interface Coordinator {
   id: number;
@@ -164,8 +164,6 @@ export default function App() {
         {tab === 'bonuses' && <BonusesPage coordinator={coordinator} />}
         {tab === 'sector' && (isAdmin ? <CouncilPage coordinator={coordinator} /> : <SectorPage coordinator={coordinator} />)}
         {tab === 'events' && <EventsPage coordinator={coordinator} />}
-        {tab === 'council' && <CouncilPage coordinator={coordinator} />}
-        {tab === 'students' && <CouncilPage coordinator={coordinator} initialTab="students" />}
         {tab === 'petitions' && <PetitionsAdminPage coordinator={coordinator} />}
         {tab === 'stats' && <AdminStatsPage coordinator={coordinator} />}
         {tab === 'applications' && <ApplicationsPage coordinator={coordinator} />}

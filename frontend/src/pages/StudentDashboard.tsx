@@ -3,6 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { api } from '../utils/api';
 import { useMascotToast } from '../components/MascotToast';
 import { IconCheck, IconX, IconQrCode, IconAward, IconCamera } from '../components/Icons';
+import ScannerPage from './ScannerPage';
+import { Coordinator } from '../App';
 
 interface StudentInfo {
   id: number;
@@ -71,7 +73,7 @@ interface BalanceData {
   totalTransactions: number;
 }
 
-type Tab = 'events' | 'exemptions' | 'activity' | 'petitions';
+type Tab = 'events' | 'exemptions' | 'activity' | 'petitions' | 'scanner';
 
 const PETITION_TYPES = ['DISCOUNT', 'DORMITORY', 'SPECIALIZATION'] as const;
 
@@ -229,9 +231,11 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
   }
 
   const activeApplications = applications.filter((a) => ['PENDING', 'APPROVED', 'AWAITING_MARK'].includes(a.status));
+  const checkedInApplications = applications.filter((a) => a.status === 'ATTENDANCE_CONFIRMED');
+  const isScanner = events.some((e) => ((e as any).studentScannerAssignments || []).some((a: any) => a.student?.id === student.id));
   const applicationEvents = events.filter((e) => {
     const app = activeApplications.find((a) => a.eventId === e.id);
-    return app && (e as any).status !== 'DRAFT' && !((e as any).attendanceFinalized);
+    return app && (e as any).status !== 'DRAFT';
   });
   const upcomingEvents = events.filter((e) => {
     if ((e as any).status === 'DRAFT') return false;
@@ -249,7 +253,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     if (activeApplications.some((a) => a.eventId === e.id)) return false;
     return true;
   });
-  const attendedEvents = events.filter((e) => myAttendedIds.includes(e.id));
+  const attendedEvents = events.filter((e) => myAttendedIds.includes(e.id) || checkedInApplications.some((a) => a.eventId === e.id));
   const missedEvents = events.filter((e) => {
     if (!myEventIds.has(e.id)) return false;
     if (!(e as any).attendanceFinalized) return false;
@@ -308,6 +312,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
           { id: 'exemptions' as Tab, label: 'Освобождения' },
           { id: 'activity' as Tab, label: 'Активность' },
           { id: 'petitions' as Tab, label: 'Ходатайства' },
+          ...(isScanner ? [{ id: 'scanner' as Tab, label: 'Сканер' }] : []),
         ]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{
@@ -724,6 +729,10 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
               </div>
             )}
           </div>
+        )}
+
+        {tab === 'scanner' && isScanner && (
+          <ScannerPage coordinator={{ id: student.id, fullName: student.fullName, telegramUsername: '', role: 'COORDINATOR', sector: null } as Coordinator} />
         )}
       </div>
 

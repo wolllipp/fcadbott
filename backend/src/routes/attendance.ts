@@ -4,11 +4,17 @@ import crypto from 'crypto';
 
 const router = Router();
 
-async function canScan(event: { createdBy: number; scannerAssignments: { coordinatorId: number }[] }, coordinatorId: number) {
-  const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId }, select: { role: true } });
-  if (!coordinator) return false;
-  if (['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator.role)) return true;
-  return event.createdBy === coordinatorId || event.scannerAssignments.some((a) => a.coordinatorId === coordinatorId);
+async function canScan(event: { createdBy: number; scannerAssignments: { coordinatorId: number }[]; studentScannerAssignments?: { studentId: number }[] }, userId: number) {
+  const coordinator = await prisma.coordinator.findUnique({ where: { id: userId }, select: { role: true } });
+  if (coordinator) {
+    if (['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator.role)) return true;
+    return event.createdBy === userId || event.scannerAssignments.some((a) => a.coordinatorId === userId);
+  }
+  const student = await prisma.student.findUnique({ where: { id: userId }, select: { id: true } });
+  if (student) {
+    return event.studentScannerAssignments?.some((a) => a.studentId === userId) || false;
+  }
+  return false;
 }
 
 function generateQrToken(): string {
@@ -76,6 +82,7 @@ router.post('/scan', async (req: Request, res: Response) => {
           select: {
             id: true, name: true, eventDate: true, pointsForAttendance: true, status: true, createdBy: true,
             scannerAssignments: { select: { coordinatorId: true } },
+            studentScannerAssignments: { select: { studentId: true } },
           },
         },
         student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } },
@@ -226,6 +233,7 @@ router.post('/manual-check', async (req: Request, res: Response) => {
           select: {
             id: true, name: true, eventDate: true, pointsForAttendance: true, status: true, createdBy: true,
             scannerAssignments: { select: { coordinatorId: true } },
+            studentScannerAssignments: { select: { studentId: true } },
           },
         },
         student: { select: { id: true, fullName: true, groupNumber: true, chatId: true } },
