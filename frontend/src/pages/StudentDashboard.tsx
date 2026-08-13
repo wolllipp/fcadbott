@@ -161,9 +161,23 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
       setLoading(false);
     }
     load();
-    const interval = setInterval(load, 30000);
+    const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [evts, apps] = await Promise.all([
+          api.events.list(),
+          api.applications.list({ studentId: student.id }).catch(() => []),
+        ]);
+        setEvents(evts);
+        setApplications(apps);
+      } catch (_) {}
+    }
+    load();
+  }, [tab]);
 
   async function registerForEvent(eventId: number) {
     setRegistering(eventId);
