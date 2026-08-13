@@ -16,15 +16,25 @@ const councilMembers = [
   ['Карпекина Ольга', 'Координатор', 'Декоративное', '/council/Карпекина Ольга.png'],
   ['Помахо Алеся', 'Координатор', 'Профориентационное', '/council/Помахо Алеся.png'],
   ['Шулеев Денис', 'Координатор', 'Декоративное', '/council/Шулеев Денис.png'],
+  ['Гайдук Полина', 'Координатор', 'Театральное', ''],
+  ['Шахов Евгений', 'Координатор', 'Информационное', ''],
+  ['Гояев Кирилл', 'Координатор', 'Дополнительное направление', '/council/Гояев Кирилл.png'],
 ];
 
-const administration = [
-  ['Будник Артур Владимирович', 'Декан'], ['Кракасевич Сергей Викторович', 'Заместитель декана'],
-  ['Камлач Павел Викторович', 'Заместитель декана'], ['Котухов Алексей Валерьевич', 'Заместитель декана'],
-  ['Андриалович Инна Владимировна', 'Заместитель декана по идеологической и воспитательной работе'],
-  ['Пискун Геннадий Адамович', 'Заместитель декана по научной работе'],
-  ['Сашникова Татьяна Михайловна', 'Ведущий специалист деканата'], ['Барановская Анна Анатольевна', 'Специалист деканата'],
-  ['Ганакова Екатерина Викторовна', 'Специалист деканата'],
+const administrationGroups = [
+  { title: 'Декан', people: [['Будник Артур Владимирович', 'Декан', '']] },
+  { title: 'Заместители декана', people: [
+    ['Кракасевич Сергей Викторович', 'Заместитель декана', 'https://www.bsuir.by/m/12_100229_1_67541.jpg'],
+    ['Камлач Павел Викторович', 'Заместитель декана', 'https://www.bsuir.by/m/12_100229_1_159143.webp'],
+    ['Котухов Алексей Валерьевич', 'Заместитель декана', 'https://www.bsuir.by/m/12_100229_1_70580.JPG'],
+    ['Андриалович Инна Владимировна', 'Заместитель декана по идеологической и воспитательной работе', 'https://www.bsuir.by/m/12_100229_1_169984.jpg'],
+    ['Пискун Геннадий Адамович', 'Заместитель декана по научной работе', 'https://www.bsuir.by/m/12_100229_1_140808.jpg'],
+  ] },
+  { title: 'Сотрудники деканата', people: [
+    ['Сашникова Татьяна Михайловна', 'Ведущий специалист деканата', 'https://www.bsuir.by/m/12_100229_1_141289.jpg'],
+    ['Барановская Анна Анатольевна', 'Специалист деканата', 'https://www.bsuir.by/m/12_100229_1_179128.jpg'],
+    ['Ганакова Екатерина Викторовна', 'Специалист деканата', 'https://www.bsuir.by/m/12_100229_1_83801.jpg'],
+  ] },
 ];
 
 const sections = [
@@ -88,6 +98,7 @@ export default function PortfolioPage() {
   return (
     <div className="landing-page">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600;700&display=swap');
         html { scroll-behavior: smooth; }
         .landing-page { min-height: 100vh; background: #0b0c12; color: #eef0f8; font-family: Onest, system-ui, sans-serif; overflow-x: hidden; }
         .landing-nav { position: sticky; top: 0; z-index: 20; background: rgba(11,12,18,.82); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255,255,255,.08); }
@@ -99,9 +110,10 @@ export default function PortfolioPage() {
         .landing-links a { color: #a6aabd; text-decoration: none; font-size: 12px; white-space: nowrap; transition: color .2s; }
         .landing-links a:hover { color: white; }
         .landing-hero { min-height: 82vh; display: grid; place-items: center; text-align: center; padding: 110px 22px 90px; background: radial-gradient(circle at 50% 20%, rgba(123,110,246,.3), transparent 42%), linear-gradient(140deg,#0b0c12,#17152a 55%,#0b0c12); }
-        .landing-hero h1 { max-width: 850px; margin: 18px auto; font-size: clamp(38px,7vw,76px); line-height: .98; letter-spacing: -.065em; }
+        .landing-hero > div { animation: landingHeroIn .9s cubic-bezier(.2,.75,.25,1) both; }
+        @keyframes landingHeroIn { from { opacity: 0; transform: translateY(24px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .landing-hero h1 { max-width: 1000px; margin: 0 auto 24px; font-family: Unbounded, sans-serif; font-size: clamp(38px,8vw,92px); line-height: 1.05; letter-spacing: -.07em; }
         .landing-hero p { max-width: 650px; margin: 0 auto 28px; color: #b8b9c9; font-size: clamp(16px,2vw,21px); line-height: 1.55; }
-        .landing-logo { width: 105px; filter: drop-shadow(0 12px 32px rgba(123,110,246,.45)); }
         .landing-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
         .landing-button { display: inline-flex; padding: 13px 20px; border-radius: 12px; color: white; text-decoration: none; font-weight: 700; font-size: 14px; background: #786cf2; box-shadow: 0 10px 28px rgba(120,108,242,.22); }
         .landing-button.alt { background: rgba(255,255,255,.08); box-shadow: none; border: 1px solid rgba(255,255,255,.12); }
@@ -129,13 +141,13 @@ export default function PortfolioPage() {
       <nav className="landing-nav"><div className="landing-nav-inner"><a className="landing-brand" href="#top"><img src="/fcad.svg" alt="ФКП" /><span>ФКП БГУИР</span></a><div className="landing-links">{[['О факультете','about'],['Поступление','admission'],['Администрация','administration'],['Активности','activities'],['Студсовет','council'],['Сектора','sectors'],['Расписание','schedule'],['Словарь','slang'],['Общежития','dormitory']].map(([label,id]) => <a key={id} href={`#${id}`}>{label}</a>)}</div></div></nav>
 
       <main id="top">
-        <section className="landing-hero"><div><img className="landing-logo" src="/fcad.svg" alt="ФКП БГУИР" /><h1>Факультет компьютерного проектирования</h1><p>Место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div className="landing-actions"><a className="landing-button" href="#admission">Поступившим — важно</a><a className="landing-button alt" href="#council">Познакомиться со студсоветом</a></div></div></section>
+        <section className="landing-hero"><div><h1>ФКП БГУИР</h1><p>Факультет компьютерного проектирования — место, где технологии, студенческая инициатива и люди собираются в одну живую систему.</p><div className="landing-actions"><a className="landing-button" href="#admission">Поступившим — важно</a><a className="landing-button alt" href="#council">Познакомиться со студсоветом</a></div></div></section>
 
         <Section id="about" eyebrow="ФКП БГУИР" title="О факультете"><div className="landing-grid"><div className="landing-card"><h3>Компьютерное проектирование</h3><p>Факультет готовит специалистов в области компьютерного проектирования, программной инженерии и информационных технологий. Здесь учатся создавать решения, которые работают за пределами учебной аудитории.</p></div><div className="landing-card"><h3>Студенческая жизнь</h3><p>БГУИР — это лекции, проекты, спорт, творчество, новые знакомства и команды, в которых можно найти своё направление.</p></div><div className="landing-card"><h3>Студенческий совет ФКП</h3><p>Помогает первокурсникам адаптироваться, представляет интересы студентов, организует события и связывает студентов с факультетом.</p></div></div></Section>
 
         <Section id="admission" eyebrow="Для поступивших на первый курс" title="Важная информация"><div className="landing-grid"><div className="landing-card"><h3>Выдача договоров</h3><p>О подготовке специалистов с высшим образованием за счёт средств республиканского бюджета и на платной основе.</p><p><strong>17–31 августа 2026 года</strong></p><p>ФКП, 2-й учебный корпус, ул. Петруся Бровки, 4, аудитория 308.</p><p>Справки: +375 17 293 88 02, +375 17 293 86 25</p></div><div className="landing-card"><h3>Оплата обучения</h3><p>Первый этап оплаты — после приказа о зачислении, до 31 августа 2026 года.</p><p><strong>25% годовой стоимости: 1 182,50 руб.</strong></p><p>Приказ №317 от 22.06.2026 «Об установлении стоимости обучения на платной основе».</p></div><div className="landing-card"><h3>Оплата через ЕРИП</h3><p>Система «Расчёт» → Образование и развитие → Высшее образование → Минск → БГУИР → Обучение (1 курс).</p><p>Введите номер студенческого билета без дефиса, затем сумму.</p></div></div></Section>
 
-        <Section id="administration" eyebrow="БГУИР" title="Администрация"><div className="landing-notice" style={{ marginBottom: 22 }}><strong>Ректорат</strong><br />Ректор — Богуш Вадим Анатольевич<br />Проректоры — Давыдов Максим Викторович, Стемпицкий Виктор Романович, Шнейдеров Евгений Николаевич, Кузнецов Дмитрий Федорович, Артюшенко Евгений Антонович, Хаткевич Владислав Казимирович.</div><div className="landing-grid">{administration.map(([name, role]) => <article className="landing-card landing-person" key={name}><div className="landing-person-placeholder">{name[0]}</div><h3>{name}</h3><div className="landing-meta">{role}</div></article>)}</div></Section>
+        <Section id="administration" eyebrow="БГУИР" title="Администрация"><div className="landing-notice" style={{ marginBottom: 34 }}><strong>Ректорат</strong><br />Ректор — Богуш Вадим Анатольевич<br />Проректоры — Давыдов Максим Викторович, Стемпицкий Виктор Романович, Шнейдеров Евгений Николаевич, Кузнецов Дмитрий Федорович, Артюшенко Евгений Антонович, Хаткевич Владислав Казимирович.</div>{administrationGroups.map((group) => <div key={group.title} style={{ marginBottom: 38 }}><h3 style={{ fontSize: 21, marginBottom: 16, color: '#d9d7ff' }}>{group.title}</h3><div className="landing-grid">{group.people.map(([name, role, photo]) => <article className="landing-card landing-person" key={name}>{photo ? <img src={photo} alt={name} /> : <div className="landing-person-placeholder">{name[0]}</div>}<h3>{name}</h3><div className="landing-meta">{role}</div></article>)}</div></div>)}</Section>
 
         <Section id="activities" eyebrow="Возможности" title="Студенческие активы" dark><div className="landing-grid">{activities.map(([name, text]) => <article className="landing-card" key={name}><h3>{name}</h3><p>{text}</p></article>)}</div></Section>
 
