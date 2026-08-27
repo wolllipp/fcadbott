@@ -50,7 +50,7 @@ router.post('/verify', async (req: Request, res: Response) => {
 
     // Test mode: requires BOTH production NODE_ENV strict + explicit ALLOW_TEST_AUTH flag
     if (process.env.NODE_ENV === 'production' && process.env.ALLOW_TEST_AUTH === 'true' && req.body.testUsername) {
-      const username = req.body.testUsername.replace('@', '');
+      const username = String(req.body.testUsername ?? '').trim().replace(/^@+/, '');
       
       // First try coordinator
       const coordinator = await prisma.coordinator.findUnique({
@@ -119,7 +119,12 @@ router.post('/verify', async (req: Request, res: Response) => {
 
 router.post('/student-register', async (req: Request, res: Response) => {
   try {
-    const { fullName, studentCardNumber, telegramUsername, groupNumber, budgetStatus, initData } = req.body;
+    const fullName = String(req.body?.fullName ?? '').trim();
+    const studentCardNumber = String(req.body?.studentCardNumber ?? '').trim();
+    const telegramUsername = String(req.body?.telegramUsername ?? '').trim();
+    const groupNumber = String(req.body?.groupNumber ?? '').trim();
+    const budgetStatus = String(req.body?.budgetStatus ?? '').trim();
+    const initData = req.body?.initData;
     if (!fullName || !studentCardNumber || !telegramUsername || !groupNumber) {
       return res.status(400).json({ error: 'fullName, studentCardNumber, groupNumber и telegramUsername обязательны' });
     }
@@ -168,7 +173,8 @@ router.post('/student-register', async (req: Request, res: Response) => {
 
 router.post('/student-login', async (req: Request, res: Response) => {
   try {
-    const { telegramUsername, initData } = req.body;
+    const telegramUsername = String(req.body?.telegramUsername ?? '').trim();
+    const initData = req.body?.initData;
     if (!telegramUsername) {
       return res.status(400).json({ error: 'telegramUsername обязателен' });
     }
