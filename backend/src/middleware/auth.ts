@@ -16,7 +16,14 @@ declare global {
 const COOKIE = 'fkp_session';
 const maxAge = 7 * 24 * 60 * 60;
 
-function secret() { return process.env.SESSION_SECRET || process.env.BOT_TOKEN || ''; }
+// SESSION_SECRET is required at startup — never fall back to BOT_TOKEN (would allow session forgery if token leaks).
+function secret() {
+  const s = process.env.SESSION_SECRET;
+  if (!s) {
+    throw new Error('SESSION_SECRET environment variable is required');
+  }
+  return s;
+}
 
 function sign(payload: string) {
   return crypto.createHmac('sha256', secret()).update(payload).digest('base64url');

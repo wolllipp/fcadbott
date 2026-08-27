@@ -7,6 +7,14 @@ import { setSession } from '../middleware/auth';
 
 const router = Router();
 
+// Telegram usernames: 3-32 chars, [a-zA-Z0-9_], must start with a letter, no consecutive underscores.
+// Strips a leading "@" and validates the remainder; returns null for invalid input.
+const TELEGRAM_USERNAME_RE = /^[A-Za-z][A-Za-z0-9_]{2,31}$/;
+export function sanitizeTelegramUsername(raw: string): string {
+  const stripped = String(raw || '').replace(/^@+/, '');
+  return TELEGRAM_USERNAME_RE.test(stripped) ? stripped : '';
+}
+
 
 function verifyTelegramWebAppData(initData: string): Record<string, string> | null {
   const params = new URLSearchParams(initData);
@@ -40,8 +48,8 @@ router.post('/verify', async (req: Request, res: Response) => {
   try {
     const { initData } = req.body;
 
-    // In development, allow test mode
-    if (process.env.NODE_ENV === 'development' && req.body.testUsername) {
+    // Test mode: requires BOTH production NODE_ENV strict + explicit ALLOW_TEST_AUTH flag
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_TEST_AUTH === 'true' && req.body.testUsername) {
       const username = req.body.testUsername.replace('@', '');
       
       // First try coordinator
@@ -142,7 +150,7 @@ router.post('/student-register', async (req: Request, res: Response) => {
     const updated = await prisma.student.update({
       where: { id: student.id },
       data: {
-        telegramUsername: telegramUsername.replace('@', ''),
+        telegramUsername: sanitizeTelegramUsername(telegramUsername),
         groupNumber: groupNumber || student.groupNumber,
         budgetStatus: budgetStatus || student.budgetStatus,
         ...(chatId && { chatId }),
@@ -166,7 +174,7 @@ router.post('/student-login', async (req: Request, res: Response) => {
     }
 
     const student = await prisma.student.findFirst({
-      where: { telegramUsername: telegramUsername.replace('@', '') },
+      where: { telegramUsername: sanitizeTelegramUsername(telegramUsername) },
     });
 
     if (!student) {

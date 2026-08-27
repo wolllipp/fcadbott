@@ -336,7 +336,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
                     {(ev as any).scannerCoordinator && (
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
                         Отмечающий: {(ev as any).scannerCoordinator.telegramUsername
-                          ? <a href={`https://t.me/${(ev as any).scannerCoordinator.telegramUsername}`} target="_blank" rel="noopener" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>@{(ev as any).scannerCoordinator.telegramUsername}</a>
+                          ? <a href={`https://t.me/${encodeURIComponent((ev as any).scannerCoordinator.telegramUsername)}`} target="_blank" rel="noopener" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>@{(ev as any).scannerCoordinator.telegramUsername}</a>
                           : <span style={{ fontWeight: 600 }}>{(ev as any).scannerCoordinator.fullName}</span>}
                       </div>
                     )}
@@ -397,7 +397,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
                     {(ev as any).scannerCoordinator && (
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
                         Отмечающий: {(ev as any).scannerCoordinator.telegramUsername
-                          ? <a href={`https://t.me/${(ev as any).scannerCoordinator.telegramUsername}`} target="_blank" rel="noopener" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>@{(ev as any).scannerCoordinator.telegramUsername}</a>
+                          ? <a href={`https://t.me/${encodeURIComponent((ev as any).scannerCoordinator.telegramUsername)}`} target="_blank" rel="noopener" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>@{(ev as any).scannerCoordinator.telegramUsername}</a>
                           : <span style={{ fontWeight: 600 }}>{(ev as any).scannerCoordinator.fullName}</span>}
                       </div>
                     )}

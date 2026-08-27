@@ -17,7 +17,22 @@ function canManageStudents(role: string): boolean {
 // STUDENTS
 router.get('/students', async (req: Request, res: Response) => {
   try {
-    const students = await prisma.student.findMany({ orderBy: { fullName: 'asc' } });
+    const user = (req as any).authUser;
+    if (!user || user.kind !== 'coordinator' || !canManageCouncil(user.role)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    const students = await prisma.student.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        groupNumber: true,
+        studentCardNumber: true,
+        budgetStatus: true,
+        sectors: true,
+        birthDate: true,
+      },
+      orderBy: { fullName: 'asc' },
+    });
     res.json(students);
   } catch (err) {
     console.error(err);

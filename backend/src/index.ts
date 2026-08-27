@@ -33,7 +33,14 @@ function rateLimit(limit: number, windowMs: number) {
   };
 }
 
-app.use(cors({ origin: ['https://fcadbot.site', 'https://delete-unsnap-banker.ngrok-free.dev', 'http://localhost:5173'], credentials: true }));
+app.use(cors({
+  origin: (() => {
+    const prodOrigins = ['https://fcadbot.site', 'http://localhost:5173'];
+    const devOrigins = (process.env.DEV_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    return process.env.NODE_ENV === 'production' ? prodOrigins : [...prodOrigins, ...devOrigins];
+  })(),
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.static('../frontend/dist'));
 app.use('/api', requireApiAuth);
