@@ -140,7 +140,7 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
     async function load() {
       setLoading(true);
       try {
-        const [evts, exmps, pets, apps, bal, pts] = await Promise.all([
+        const results = await Promise.allSettled([
           api.events.list(),
           api.exemptions.byStudent({ fullName: student.fullName }),
           api.petitions.list({ studentId: student.id }).catch(() => []),
@@ -148,12 +148,17 @@ export default function StudentDashboard({ student, onLogout }: { student: Stude
           api.points.balance(student.id).catch(() => null),
           api.points.list({ studentId: student.id }).catch(() => []),
         ]);
-        setEvents(evts);
-        setPetitions(pets);
-        setExemptions(exmps);
-        setApplications(apps);
-        setBalance(bal);
-        setPointsHistory(pts);
+        const get = (i: number, fallback: any) => {
+          const r = results[i];
+          return r.status === 'fulfilled' ? r.value : fallback;
+        };
+        setEvents(get(0, []));
+        setExemptions(get(1, []));
+        setPetitions(get(2, []));
+        setApplications(get(3, []));
+        setBalance(get(4, null));
+        setPointsHistory(get(5, []));
+        const evts = get(0, []) as EventData[];
         const registered = evts.filter((e: EventData) =>
           e.participants.some((p: any) => p.fullName === student.fullName && p.groupNumber === student.groupNumber)
         );

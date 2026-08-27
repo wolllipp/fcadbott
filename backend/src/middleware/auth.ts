@@ -62,9 +62,10 @@ export function requireApiAuth(req: Request, res: Response, next: NextFunction) 
   if (!user) return res.status(401).json({ error: 'Требуется авторизация через Telegram' });
 
   const claimedIds = [req.body?.coordinatorId, req.body?.creatorId, req.body?.authorId, req.body?.userId, req.query.coordinatorId]
-    .filter((value) => value !== undefined && value !== null)
-    .map(Number);
-  if (claimedIds.some((id) => id !== user.id)) return res.status(403).json({ error: 'Идентификатор пользователя не совпадает с сессией' });
+    .filter((value) => value !== undefined && value !== null && value !== '')
+    .map(Number)
+    .filter((id) => Number.isFinite(id));
+  if (claimedIds.length > 0 && claimedIds.some((id) => id !== user.id)) return res.status(403).json({ error: 'Идентификатор пользователя не совпадает с сессией' });
 
   if (req.body && user.kind === 'coordinator') req.body.role = user.role;
   if (req.query && user.kind === 'coordinator') req.query.role = user.role as string;

@@ -78,7 +78,8 @@ router.get('/by-student', async (req: Request, res: Response) => {
     const where: any = {};
 
     if (studentId) {
-      where.students = { some: { studentId: Number(studentId) } };
+      const parsedStudentId = Number(studentId);
+      if (Number.isFinite(parsedStudentId)) where.students = { some: { studentId: parsedStudentId } };
     } else if (fullName) {
       // Find by studentId (if student exists in DB) or externalName
       const student = await prisma.student.findFirst({ where: { fullName: fullName as string } });

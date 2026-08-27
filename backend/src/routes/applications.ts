@@ -18,8 +18,10 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { eventId, studentId, status, role } = req.query;
     const where: any = {};
-    if (eventId) where.eventId = Number(eventId);
-    if (studentId) where.studentId = Number(studentId);
+    const parsedEventId = eventId ? Number(eventId) : NaN;
+    if (Number.isFinite(parsedEventId)) where.eventId = parsedEventId;
+    const parsedStudentId = studentId ? Number(studentId) : NaN;
+    if (Number.isFinite(parsedStudentId)) where.studentId = parsedStudentId;
     if (status) where.status = status;
 
     if (role === 'COORDINATOR') {
