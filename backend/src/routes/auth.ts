@@ -157,7 +157,7 @@ router.post('/student-register', async (req: Request, res: Response) => {
       data: {
         telegramUsername: sanitizeTelegramUsername(telegramUsername),
         groupNumber: groupNumber || student.groupNumber,
-        budgetStatus: budgetStatus || student.budgetStatus,
+        budgetStatus: (budgetStatus as any) || student.budgetStatus,
         ...(chatId && { chatId }),
         ...(photoUrl && { photoUrl }),
       },
