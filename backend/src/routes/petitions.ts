@@ -86,7 +86,12 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { studentId, role } = req.query;
     const isAdmin = role && !['COORDINATOR'].includes(role as string);
-    const where: any = isAdmin ? {} : { studentId: Number(studentId) };
+    const parsedStudentId = studentId ? Number(studentId) : NaN;
+    const where: any = isAdmin
+      ? {}
+      : Number.isFinite(parsedStudentId)
+        ? { studentId: parsedStudentId }
+        : { studentId: -1 };
 
     const petitions = await prisma.petition.findMany({
       where,
