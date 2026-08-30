@@ -107,6 +107,14 @@ router.post('/coordinators', async (req: Request, res: Response) => {
     const creator = await prisma.coordinator.findUnique({ where: { id: creatorId } });
     if (!creator || !canManageCouncil(creator.role)) return res.status(403).json({ error: 'Access denied' });
 
+    // Hierarchy: CHAIRMAN > DEPUTY/DEAN > SECRETARY > COORDINATOR. Creator cannot assign a role higher than their own.
+    const HIERARCHY: Record<string, number> = { COORDINATOR: 1, SECRETARY: 2, DEPUTY: 3, DEAN: 3, CHAIRMAN: 4 };
+    const creatorRank = HIERARCHY[creator.role] ?? 0;
+    const targetRank = HIERARCHY[role] ?? 0;
+    if (targetRank > creatorRank) {
+      return res.status(403).json({ error: 'Нельзя назначить роль выше собственной' });
+    }
+
     const coordinator = await prisma.coordinator.create({
       data: { fullName, telegramUsername, role: role as Role, sector },
     });

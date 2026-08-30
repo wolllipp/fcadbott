@@ -67,7 +67,12 @@ export function requireApiAuth(req: Request, res: Response, next: NextFunction) 
     .filter((id) => Number.isFinite(id));
   if (claimedIds.length > 0 && claimedIds.some((id) => id !== user.id)) return res.status(403).json({ error: 'Идентификатор пользователя не совпадает с сессией' });
 
-  if (req.body && user.kind === 'coordinator') req.body.role = user.role;
-  if (req.query && user.kind === 'coordinator') req.query.role = user.role as string;
+  // Reject role escalation from students: a student session cannot impersonate a coordinator role.
+  if (user.kind === 'student' && req.body && typeof req.body.role === 'string' && req.body.role !== 'STUDENT') {
+    delete req.body.role;
+  }
+  if (user.kind === 'student' && req.query && typeof req.query.role === 'string' && req.query.role !== 'STUDENT') {
+    delete (req.query as any).role;
+  }
   next();
 }
