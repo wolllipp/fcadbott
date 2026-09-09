@@ -179,9 +179,9 @@ export async function generateBonusDoc(
     new Paragraph({
       spacing: { before: 0, after: 0 },
       children: [
-        txt('И.о. декана ФКП'),
+        txt('Декан ФКП'),
         new TextRun({ text: '\t\t\t\t\t\t\t\t', size: FS, font: FONT }),
-        txt('П.В.Камлач'),
+        txt('А.В.Будник'),
       ],
     }),
   );

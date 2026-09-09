@@ -50,7 +50,7 @@ export async function generateExemptionDoc(exemption: any): Promise<Buffer> {
           rows: [
             new TableRow({ children: [
               new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: noBorders, children: [p([txt('Студенческий совет ФКП')])] }),
-              new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: noBorders, children: [p([txt('И.о. декана факультета')]), p([txt('компьютерного проектирования')]), p([txt('П.В.Камлачу')]), p([txt('')])] }),
+              new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: noBorders, children: [p([txt('Декану ФКП')]), p([txt('А.В.Буднику')]), p([txt('')])] }),
             ]}),
             new TableRow({ children: [
               new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, borders: noBorders, children: [p([txt('ДОКЛАДНАЯ ЗАПИСКА')]), p([txt(dateStr)]), p([txt('г. Минск')]), p([txt('')])] }),
