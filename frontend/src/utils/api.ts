@@ -80,6 +80,8 @@ export const api = {
     generateExemption: (eventId: number, data: { coordinatorId: number; exemptionDate: string; reason?: string }) => apiRequest(`/events/${eventId}/generate-exemption`, { method: 'POST', body: JSON.stringify(data) }),
     finalizeAttendance: (eventId: number, data: { coordinatorId: number; role?: string }) => apiRequest(`/events/${eventId}/finalize-attendance`, { method: 'POST', body: JSON.stringify(data) }),
     coordinators: () => apiRequest('/events/coordinators'),
+    sendParticipants: (eventId: number, coordinatorId: number, role?: string) =>
+      apiRequest(`/events/${eventId}/send-participants`, { method: 'POST', body: JSON.stringify({ coordinatorId, role }) }),
   },
   council: {
     students: {

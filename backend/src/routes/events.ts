@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-import { sendNewEvent } from "../services/bot";
+import { sendNewEvent, sendParticipantsList } from "../services/bot";
 const router = Router();
 
 function scannerIds(value: unknown, fallback: number): number[] {
@@ -432,6 +432,33 @@ router.post('/:id/register', async (req: Request, res: Response) => {
       data: { eventId, fullName, groupNumber, attended: false },
     });
     res.json(participant);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/:id/send-participants', async (req: Request, res: Response) => {
+  try {
+    const { coordinatorId, role } = req.body;
+    const eventId = Number(req.params.id);
+    if (!eventId || !coordinatorId) return res.status(400).json({ error: 'eventId and coordinatorId required' });
+
+    const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId } });
+    if (!coordinator) return res.status(404).json({ error: 'Coordinator not found' });
+    if (!coordinator.chatId) return res.status(400).json({ error: 'Координатор не запустил бота (нет chatId)' });
+
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { createdBy: true } });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    const isCreator = event.createdBy === coordinatorId;
+    const isChairman = role === 'CHAIRMAN';
+    if (!isCreator && !isChairman) {
+      return res.status(403).json({ error: 'Только создатель или председатель может выслать список' });
+    }
+
+    await sendParticipantsList(eventId, coordinator.chatId);
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

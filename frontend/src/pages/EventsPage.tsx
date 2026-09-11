@@ -542,6 +542,17 @@ export default function EventsPage({ coordinator }: Props) {
               </button>
             )}
 
+            {selectedEvent.participants.length > 0 && (selectedEvent.createdBy === coordinator.id || coordinator.role === 'CHAIRMAN') && (
+              <button className="btn btn-ghost" onClick={async () => {
+                try {
+                  await api.events.sendParticipants(selectedEvent.id, coordinator.id, coordinator.role);
+                  alert('✅ Список участников отправлен вам в Telegram');
+                } catch (e: any) { alert(e.message); }
+              }} style={{ marginTop: 6, fontSize: 13, padding: '8px' }}>
+                📋 Выслать список участников
+              </button>
+            )}
+
             {attendedCount > 0 && (
               <div className="card" style={{ marginTop: 16, borderColor: 'var(--accent)', animation: 'fadeIn 0.25s ease both' }}>
                 <div className="section-label">Сформировать докладную</div>

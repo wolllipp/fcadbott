@@ -383,3 +383,39 @@ export async function checkMilestone(studentId: number) {
     }
   }
 }
+
+export async function sendParticipantsList(eventId: number, coordinatorChatId: string) {
+  if (!bot || !coordinatorChatId) return;
+
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event) return;
+
+  const participants = await prisma.eventParticipant.findMany({
+    where: { eventId },
+    orderBy: { fullName: 'asc' },
+  });
+
+  if (participants.length === 0) {
+    try { await bot.sendMessage(coordinatorChatId, '📋 У участников мероприятия «' + event.name + '» нет записей.'); } catch (e) { console.error(e); }
+    return;
+  }
+
+  const studentNames = participants.map((p) => p.fullName);
+  const students = await prisma.student.findMany({
+    where: { fullName: { in: studentNames } },
+    select: { fullName: true, groupNumber: true, telegramUsername: true },
+  });
+  const studentMap = new Map(students.map((s) => [s.fullName + '|' + s.groupNumber, s]));
+
+  const lines = participants.map((p, i) => {
+    const key = p.fullName + '|' + p.groupNumber;
+    const student = studentMap.get(key);
+    const username = student?.telegramUsername ? '@' + student.telegramUsername : '—';
+    return (i + 1) + '. ' + p.fullName + ' – ' + p.groupNumber + ' – ' + username;
+  });
+
+  const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const message = '📋 *Участники мероприятия*\n\n*' + event.name + '*\n📅 ' + dateStr + '\n👥 Всего: *' + participants.length + '*\n\n' + lines.join('\n');
+
+  try { await bot.sendMessage(coordinatorChatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
+}
