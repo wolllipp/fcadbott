@@ -155,9 +155,18 @@ router.delete('/coordinators/:id', async (req: Request, res: Response) => {
     const creator = await prisma.coordinator.findUnique({ where: { id: creatorId } });
     if (!creator || !canManageCouncil(creator.role)) return res.status(403).json({ error: 'Access denied' });
 
-    await prisma.exemption.deleteMany({ where: { createdBy: Number(req.params.id) } });
-    await prisma.bonusSubmission.deleteMany({ where: { coordinatorId: Number(req.params.id) } });
-    await prisma.coordinator.delete({ where: { id: Number(req.params.id) } });
+    const targetId = Number(req.params.id);
+
+    await prisma.eventScannerCoordinator.deleteMany({ where: { coordinatorId: targetId } });
+    await prisma.eventApplication.updateMany({ where: { approvedById: targetId }, data: { approvedById: null } });
+    await prisma.event.updateMany({ where: { scannerCoordinatorId: targetId }, data: { scannerCoordinatorId: null } });
+    await prisma.event.updateMany({ where: { createdBy: targetId }, data: { createdBy: creator.id } });
+    await prisma.pointTransaction.updateMany({ where: { authorId: targetId }, data: { authorId: null } });
+    await prisma.petition.updateMany({ where: { reviewerId: targetId }, data: { reviewerId: null } });
+    await prisma.sector.deleteMany({ where: { coordinatorId: targetId } });
+    await prisma.exemption.deleteMany({ where: { createdBy: targetId } });
+    await prisma.bonusSubmission.deleteMany({ where: { coordinatorId: targetId } });
+    await prisma.coordinator.delete({ where: { id: targetId } });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
