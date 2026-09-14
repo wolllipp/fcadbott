@@ -164,7 +164,17 @@ router.delete('/coordinators/:id', async (req: Request, res: Response) => {
     await prisma.pointTransaction.updateMany({ where: { authorId: targetId }, data: { authorId: null } });
     await prisma.petition.updateMany({ where: { reviewerId: targetId }, data: { reviewerId: null } });
     await prisma.sector.deleteMany({ where: { coordinatorId: targetId } });
+    const exs = await prisma.exemption.findMany({ where: { createdBy: targetId }, select: { id: true } });
+    const exIds = exs.map((e) => e.id);
+    if (exIds.length) {
+      await prisma.exemptionStudent.deleteMany({ where: { exemptionId: { in: exIds } } });
+    }
     await prisma.exemption.deleteMany({ where: { createdBy: targetId } });
+    const subs = await prisma.bonusSubmission.findMany({ where: { coordinatorId: targetId }, select: { id: true } });
+    const subIds = subs.map((s) => s.id);
+    if (subIds.length) {
+      await prisma.bonusEntry.deleteMany({ where: { submissionId: { in: subIds } } });
+    }
     await prisma.bonusSubmission.deleteMany({ where: { coordinatorId: targetId } });
     await prisma.coordinator.delete({ where: { id: targetId } });
     res.json({ success: true });
