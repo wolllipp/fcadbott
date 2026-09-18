@@ -506,7 +506,9 @@ router.post('/:id/award-points', async (req: Request, res: Response) => {
       awarded++;
 
       try {
-        await sendPointsAwarded(student, event.pointsForAttendance, event.name);
+        const balanceRows = await prisma.pointTransaction.findMany({ where: { studentId: student.id, status: 'ACTIVE' }, select: { points: true } });
+        const balance = balanceRows.reduce((sum, r) => sum + r.points, 0);
+        await sendPointsAwarded(student, event.pointsForAttendance, event.name, balance);
         await checkMilestone(student.id);
       } catch (_) {}
     }
