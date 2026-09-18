@@ -16,6 +16,7 @@ interface StudentData {
   studentCardNumber: string;
   sectors: string[];
   budgetStatus: string;
+  telegramUsername?: string;
 }
 
 interface Props { coordinator: Coordinator; }
@@ -147,9 +148,9 @@ export default function SectorPage({ coordinator }: Props) {
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 14 }}>Нет студентов в вашем секторе</div>
               ) : (
                 mySectorStudents.map((s, i) => (
-                  <div key={s.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: `fadeIn 0.2s ease ${i * 0.04}s both` }}>
+                    <div key={s.id} className="card" style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', animation: `fadeIn 0.2s ease ${i * 0.04}s both` }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{s.fullName}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{s.fullName}{s.telegramUsername ? <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 400 }}> @{s.telegramUsername}</span> : null}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                         {s.budgetStatus === 'PAID' ? <span className="badge badge-yellow">Платка</span> : s.budgetStatus === 'NO_STIPEND' ? <span className="badge badge-gray">Без стипендии</span> : <span className="badge badge-green">Бюджет</span>}
@@ -259,7 +260,7 @@ export default function SectorPage({ coordinator }: Props) {
                     data.students.map((s) => (
                       <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 500 }}>{s.fullName}</div>
+                          <div style={{ fontSize: 14, fontWeight: 500 }}>{s.fullName}{s.telegramUsername ? <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 400 }}> @{s.telegramUsername}</span> : null}</div>
                           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {s.groupNumber}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                             {s.budgetStatus === 'PAID' ? <span className="badge badge-yellow">Платка</span> : s.budgetStatus === 'NO_STIPEND' ? <span className="badge badge-gray">Без стипендии</span> : <span className="badge badge-green">Бюджет</span>}

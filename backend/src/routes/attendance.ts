@@ -5,10 +5,15 @@ import crypto from 'crypto';
 const router = Router();
 
 async function canScan(event: { createdBy: number; scannerAssignments: { coordinatorId: number }[]; studentScannerAssignments?: { studentId: number }[] }, userId: number) {
-  const coordinator = await prisma.coordinator.findUnique({ where: { id: userId }, select: { role: true } });
+  const coordinator = await prisma.coordinator.findUnique({ where: { id: userId }, select: { role: true, telegramUsername: true } });
   if (coordinator) {
     if (['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator.role)) return true;
-    return event.createdBy === userId || event.scannerAssignments.some((a) => a.coordinatorId === userId);
+    if (event.createdBy === userId || event.scannerAssignments.some((a) => a.coordinatorId === userId)) return true;
+    if (coordinator.telegramUsername) {
+      const linkedStudent = await prisma.student.findUnique({ where: { telegramUsername: coordinator.telegramUsername }, select: { id: true } });
+      if (linkedStudent && event.studentScannerAssignments?.some((a) => a.studentId === linkedStudent.id)) return true;
+    }
+    return false;
   }
   const student = await prisma.student.findUnique({ where: { id: userId }, select: { id: true } });
   if (student) {

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-import { sendNewEvent, sendParticipantsList } from "../services/bot";
+import { sendNewEvent, sendParticipantsList, sendPointsAwarded, checkMilestone } from "../services/bot";
 const router = Router();
 
 function scannerIds(value: unknown, fallback: number): number[] {
@@ -459,6 +459,59 @@ router.post('/:id/send-participants', async (req: Request, res: Response) => {
 
     await sendParticipantsList(eventId, coordinator.chatId);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/:id/award-points', async (req: Request, res: Response) => {
+  try {
+    const eventId = Number(req.params.id);
+    const { coordinatorId, role } = req.body;
+    const isAdmin = role && !['COORDINATOR'].includes(role as string);
+
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (!isAdmin && event.createdBy !== coordinatorId) {
+      return res.status(403).json({ error: 'Только создатель или председатель может начислить баллы' });
+    }
+
+    const attendedParticipants = await prisma.eventParticipant.findMany({
+      where: { eventId, attended: true },
+    });
+
+    let awarded = 0;
+    for (const participant of attendedParticipants) {
+      const student = await prisma.student.findFirst({
+        where: { fullName: participant.fullName, groupNumber: participant.groupNumber },
+      });
+      if (!student) continue;
+
+      const existing = await prisma.pointTransaction.findFirst({
+        where: { studentId: student.id, eventId, type: 'ATTENDANCE', status: 'ACTIVE' },
+      });
+      if (existing) continue;
+
+      await prisma.pointTransaction.create({
+        data: {
+          studentId: student.id,
+          points: event.pointsForAttendance,
+          type: 'ATTENDANCE',
+          eventId,
+          reason: event.name,
+          status: 'ACTIVE',
+        },
+      });
+      awarded++;
+
+      try {
+        await sendPointsAwarded(student, event.pointsForAttendance, event.name);
+        await checkMilestone(student.id);
+      } catch (_) {}
+    }
+
+    res.json({ awarded });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

@@ -65,6 +65,8 @@ export default function EventsPage({ coordinator }: Props) {
   const [coordinatorsList, setCoordinatorsList] = useState<{ id: number; fullName: string; telegramUsername: string; role: string }[]>([]);
   const [showCoordinatorScanners, setShowCoordinatorScanners] = useState(false);
   const [showStudentScanners, setShowStudentScanners] = useState(false);
+  const [showOrganizers, setShowOrganizers] = useState(false);
+  const [organizerSearchQuery, setOrganizerSearchQuery] = useState('');
 
   useEffect(() => {
     loadEvents();
@@ -85,6 +87,7 @@ export default function EventsPage({ coordinator }: Props) {
       setSelectedExternalIndices(new Set());
       setSearchQuery('');
     }
+    setOrganizerSearchQuery('');
   }, [step]);
 
   async function loadEvents() {
@@ -330,7 +333,8 @@ export default function EventsPage({ coordinator }: Props) {
             <Field label="Дата *">
             <CalendarField
               value={step === 'create' ? newEvent.eventDate : editingEvent.eventDate}
-              onChange={(v) => step === 'create' ? setNewEvent({ ...newEvent, eventDate: v }) : setEditingEvent({ ...editingEvent, eventDate: v })} />
+              onChange={(v) => step === 'create' ? setNewEvent({ ...newEvent, eventDate: v }) : setEditingEvent({ ...editingEvent, eventDate: v })}
+              includeTime />
             </Field>
             <Field label="Описание">
             <textarea className="input" placeholder="Описание (необязательно)" rows={3} style={{ resize: 'none' }}
@@ -360,27 +364,40 @@ export default function EventsPage({ coordinator }: Props) {
               ))}
             </div>
             </Field>
-            <Field label="Организаторы мероприятия (необязательно)">
-            <div className="scanner-picker">
-              {councilStudents.map(s => {
-                const selected = (step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).includes(s.id);
-                return (
-                  <button key={`org-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
-                    onClick={() => {
-                      const current = step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds;
-                      const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
-                      step === 'create'
-                        ? setNewEvent({ ...newEvent, organizerStudentIds: next })
-                        : setEditingEvent({ ...editingEvent, organizerStudentIds: next });
-                    }}>
-                    <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
-                    <span>{s.fullName}</span>
-                  </button>
-                );
-              })}
-              <div className="scanner-picker-hint">Организаторам не нужно подавать заявку — они автоматически допускаются</div>
+            <div style={{ marginBottom: 4 }}>
+              <button type="button" className="scanner-picker-group" onClick={() => setShowOrganizers(!showOrganizers)}>
+                Организаторы {(step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).length > 0 && 
+                  <span style={{ marginLeft: 6, background: 'var(--accent)', color: 'white', fontSize: 10, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                    {(step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).length}
+                  </span>
+                }
+                <span style={{ marginLeft: 4 }}>{showOrganizers ? '▾' : '▸'}</span>
+              </button>
+              {showOrganizers && (
+                <div className="scanner-picker" style={{ marginTop: 8 }}>
+                  <input className="input" placeholder="Поиск организатора..." value={organizerSearchQuery} onChange={(e) => setOrganizerSearchQuery(e.target.value)} style={{ marginBottom: 8 }} />
+                  {councilStudents
+                    .filter((s: any) => s.fullName.toLowerCase().includes(organizerSearchQuery.toLowerCase()) || s.groupNumber?.includes(organizerSearchQuery))
+                    .map(s => {
+                      const selected = (step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).includes(s.id);
+                      return (
+                        <button key={`org-${s.id}`} type="button" className={`scanner-picker-option${selected ? ' selected' : ''}`}
+                          onClick={() => {
+                            const current = step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds;
+                            const next = selected ? current.filter(id => id !== s.id) : [...current, s.id];
+                            step === 'create'
+                              ? setNewEvent({ ...newEvent, organizerStudentIds: next })
+                              : setEditingEvent({ ...editingEvent, organizerStudentIds: next });
+                          }}>
+                          <span className="scanner-picker-check">{selected ? '✓' : ''}</span>
+                          <span>{s.fullName}</span>
+                        </button>
+                      );
+                    })}
+                  <div className="scanner-picker-hint">Организаторам не нужно подавать заявку — они автоматически допускаются</div>
+                </div>
+              )}
             </div>
-            </Field>
             {(step === 'create' ? newEvent.organizerStudentIds : editingEvent.organizerStudentIds).length > 0 && (
               <Field label="Баллы за организацию">
               <input className="input" type="number" min={0} placeholder="0"
@@ -496,7 +513,7 @@ export default function EventsPage({ coordinator }: Props) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 500, fontSize: 14 }}>{p.fullName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {p.groupNumber}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>гр. {p.groupNumber}{(() => { const matchStudent = councilStudents.find((cs: any) => cs.fullName === p.fullName); return matchStudent?.telegramUsername ? <span style={{ color: 'var(--accent)' }}> @{matchStudent.telegramUsername}</span> : null; })()}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {selectedEvent.attendanceFinalized && !isAdmin ? (
@@ -539,6 +556,18 @@ export default function EventsPage({ coordinator }: Props) {
                 } catch (e: any) { alert(e.message); }
               }} style={{ marginTop: 6, color: 'var(--warning)', borderColor: 'var(--warning)', fontSize: 13, padding: '8px' }}>
                 Завершить отметку
+              </button>
+            )}
+
+            {attendedCount > 0 && (selectedEvent as any).pointsForAttendance > 0 && (selectedEvent.createdBy === coordinator.id || coordinator.role === 'CHAIRMAN') && (
+              <button className="btn btn-ghost" onClick={async () => {
+                if (!confirm(`Начислить ${(selectedEvent as any).pointsForAttendance} баллов ${attendedCount} участникам?`)) return;
+                try {
+                  const result = await api.events.awardPoints(selectedEvent.id, coordinator.id, coordinator.role);
+                  alert(`✅ Начислено баллы ${result.awarded} участникам`);
+                } catch (e: any) { alert(e.message); }
+              }} style={{ marginTop: 6, fontSize: 13, padding: '8px' }}>
+                + Начислить баллы
               </button>
             )}
 

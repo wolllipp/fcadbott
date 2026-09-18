@@ -82,6 +82,7 @@ export const api = {
     coordinators: () => apiRequest('/events/coordinators'),
     sendParticipants: (eventId: number, coordinatorId: number, role?: string) =>
       apiRequest(`/events/${eventId}/send-participants`, { method: 'POST', body: JSON.stringify({ coordinatorId, role }) }),
+    awardPoints: (eventId: number, coordinatorId: number, role?: string) => apiRequest(`/events/${eventId}/award-points`, { method: 'POST', body: JSON.stringify({ coordinatorId, role }) }),
   },
   council: {
     students: {

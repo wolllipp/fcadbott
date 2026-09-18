@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 interface Props {
-  value: string; // YYYY-MM-DD
+  value: string; // YYYY-MM-DD or YYYY-MM-DDTHH:MM
   onChange: (value: string) => void;
   placeholder?: string;
+  includeTime?: boolean;
 }
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -14,12 +15,26 @@ function toISO(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-export default function CalendarField({ value, onChange, placeholder = 'Выберите дату' }: Props) {
+function parseDateTime(v: string): { dateStr: string; hour: number; minute: number } {
+  if (!v) return { dateStr: '', hour: 0, minute: 0 };
+  const parts = v.split('T');
+  if (parts.length === 2) {
+    const [hh, mm] = parts[1].split(':').map(Number);
+    return { dateStr: parts[0], hour: hh || 0, minute: mm || 0 };
+  }
+  return { dateStr: v, hour: 0, minute: 0 };
+}
+
+export default function CalendarField({ value, onChange, placeholder = 'Выберите дату', includeTime = false }: Props) {
   const [open, setOpen] = useState(false);
-  const parsed = value ? new Date(`${value}T00:00:00`) : null;
+  const { dateStr, hour: initHour, minute: initMinute } = parseDateTime(value);
+  const parsed = dateStr ? new Date(`${dateStr}T00:00:00`) : null;
   const today = new Date();
   const [viewYear, setViewYear] = useState((parsed || today).getFullYear());
   const [viewMonth, setViewMonth] = useState((parsed || today).getMonth());
+  const [selectedHour, setSelectedHour] = useState(initHour);
+  const [selectedMinute, setSelectedMinute] = useState(initMinute);
+  const [dateSelected, setDateSelected] = useState(!!dateStr);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,10 +46,24 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
+  useEffect(() => {
+    if (open) {
+      const { dateStr: ds, hour, minute } = parseDateTime(value);
+      if (ds) {
+        const d = new Date(`${ds}T00:00:00`);
+        setViewYear(d.getFullYear());
+        setViewMonth(d.getMonth());
+      } else {
+        setViewYear(today.getFullYear());
+        setViewMonth(today.getMonth());
+      }
+      setSelectedHour(hour);
+      setSelectedMinute(minute);
+      setDateSelected(!!ds);
+    }
+  }, [open, value]);
+
   function openCalendar() {
-    const base = value ? new Date(`${value}T00:00:00`) : new Date();
-    setViewYear(base.getFullYear());
-    setViewMonth(base.getMonth());
     setOpen(!open);
   }
 
@@ -45,6 +74,30 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
     if (m > 11) { m = 0; y++; }
     setViewMonth(m);
     setViewYear(y);
+  }
+
+  function handleDayClick(d: number) {
+    setDateSelected(true);
+    if (!includeTime) {
+      onChange(toISO(viewYear, viewMonth, d));
+      setOpen(false);
+    }
+  }
+
+  function handleTimeDone() {
+    const hh = String(selectedHour).padStart(2, '0');
+    const mm = String(selectedMinute).padStart(2, '0');
+    onChange(`${toISO(viewYear, viewMonth, 1)}T${hh}:${mm}`);
+    setOpen(false);
+  }
+
+  function handleToday() {
+    if (includeTime) {
+      setDateSelected(true);
+    } else {
+      onChange(toISO(today.getFullYear(), today.getMonth(), today.getDate()));
+      setOpen(false);
+    }
   }
 
   const firstDay = new Date(viewYear, viewMonth, 1);
@@ -61,7 +114,9 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
     !!parsed && parsed.getFullYear() === viewYear && parsed.getMonth() === viewMonth && parsed.getDate() === d;
 
   const display = parsed
-    ? `${parsed.getDate()} ${MONTHS_GEN[parsed.getMonth()]} ${parsed.getFullYear()}`
+    ? includeTime
+      ? `${parsed.getDate()} ${MONTHS_GEN[parsed.getMonth()]} ${parsed.getFullYear()}, ${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`
+      : `${parsed.getDate()} ${MONTHS_GEN[parsed.getMonth()]} ${parsed.getFullYear()}`
     : '';
 
   const navBtnStyle: React.CSSProperties = {
@@ -108,7 +163,7 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
             {cells.map((d, i) => d === null ? <div key={`e${i}`} /> : (
               <button key={d} type="button"
-                onClick={() => { onChange(toISO(viewYear, viewMonth, d)); setOpen(false); }}
+                onClick={() => handleDayClick(d)}
                 style={{
                   aspectRatio: '1', borderRadius: 8, cursor: 'pointer', fontSize: 13,
                   fontWeight: isSelected(d) ? 700 : 500,
@@ -123,9 +178,43 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
             ))}
           </div>
 
+          {includeTime && dateSelected && (
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 10 }}>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
+                <div style={{ height: 120, overflowY: 'auto', flex: 1, borderRadius: 8, background: 'var(--bg-raised)', border: '1px solid var(--border)', scrollSnapType: 'y mandatory', scrollbarWidth: 'none' }}>
+                  {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                    <div key={h} onClick={() => setSelectedHour(h)} style={{
+                      height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, fontWeight: selectedHour === h ? 700 : 400,
+                      color: selectedHour === h ? 'var(--accent)' : 'var(--text)',
+                      background: selectedHour === h ? 'var(--accent-dim)' : 'transparent',
+                      borderRadius: 6, cursor: 'pointer', scrollSnapAlign: 'center',
+                    }}>{String(h).padStart(2, '0')}</div>
+                  ))}
+                </div>
+                <span style={{ fontSize: 18, alignSelf: 'center', fontWeight: 700, color: 'var(--text)' }}>:</span>
+                <div style={{ height: 120, overflowY: 'auto', flex: 1, borderRadius: 8, background: 'var(--bg-raised)', border: '1px solid var(--border)', scrollSnapType: 'y mandatory', scrollbarWidth: 'none' }}>
+                  {Array.from({ length: 12 }, (_, i) => i * 5).map(m => (
+                    <div key={m} onClick={() => setSelectedMinute(m)} style={{
+                      height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, fontWeight: selectedMinute === m ? 700 : 400,
+                      color: selectedMinute === m ? 'var(--accent)' : 'var(--text)',
+                      background: selectedMinute === m ? 'var(--accent-dim)' : 'transparent',
+                      borderRadius: 6, cursor: 'pointer', scrollSnapAlign: 'center',
+                    }}>{String(m).padStart(2, '0')}</div>
+                  ))}
+                </div>
+              </div>
+              <button type="button" onClick={handleTimeDone}
+                style={{ width: '100%', marginTop: 10, padding: '8px 0', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                Готово
+              </button>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
             <button type="button"
-              onClick={() => { onChange(toISO(today.getFullYear(), today.getMonth(), today.getDate())); setOpen(false); }}
+              onClick={handleToday}
               style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 4 }}>
               Сегодня
             </button>

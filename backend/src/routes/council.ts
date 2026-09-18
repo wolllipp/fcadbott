@@ -28,11 +28,11 @@ router.get('/students', async (req: Request, res: Response) => {
         fullName: true,
         groupNumber: true,
         sectors: true,
+        telegramUsername: true,
         ...(includePII && {
           studentCardNumber: true,
           budgetStatus: true,
           birthDate: true,
-          telegramUsername: true,
           chatId: true,
         }),
       },
