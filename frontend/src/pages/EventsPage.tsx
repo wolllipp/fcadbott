@@ -67,6 +67,8 @@ export default function EventsPage({ coordinator }: Props) {
   const [showStudentScanners, setShowStudentScanners] = useState(false);
   const [showOrganizers, setShowOrganizers] = useState(false);
   const [organizerSearchQuery, setOrganizerSearchQuery] = useState('');
+  const [awardedEventIds, setAwardedEventIds] = useState<Set<number>>(new Set());
+  const [finalizedByUserEventIds, setFinalizedByUserEventIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadEvents();
@@ -553,21 +555,23 @@ export default function EventsPage({ coordinator }: Props) {
                   await api.events.finalizeAttendance(selectedEvent.id, { coordinatorId: coordinator.id, role: coordinator.role });
                   const updated = await api.events.list();
                   setSelectedEvent(updated.find((e: any) => e.id === selectedEvent.id) || null);
+                  setFinalizedByUserEventIds(prev => new Set(prev).add(selectedEvent.id));
                 } catch (e: any) { alert(e.message); }
               }} style={{ marginTop: 6, color: 'var(--warning)', borderColor: 'var(--warning)', fontSize: 13, padding: '8px' }}>
-                Завершить отметку
+                {finalizedByUserEventIds.has(selectedEvent.id) ? 'Отметка завершена' : 'Завершить отметку'}
               </button>
             )}
 
             {attendedCount > 0 && (selectedEvent as any).pointsForAttendance > 0 && (selectedEvent.createdBy === coordinator.id || coordinator.role === 'CHAIRMAN') && (
-              <button className="btn btn-ghost" onClick={async () => {
+              <button className="btn btn-ghost" disabled={awardedEventIds.has(selectedEvent.id)} onClick={async () => {
                 if (!confirm(`Начислить ${(selectedEvent as any).pointsForAttendance} баллов ${attendedCount} участникам?`)) return;
                 try {
                   const result = await api.events.awardPoints(selectedEvent.id, coordinator.id, coordinator.role);
                   alert(`✅ Начислено баллы ${result.awarded} участникам`);
+                  setAwardedEventIds(prev => new Set(prev).add(selectedEvent.id));
                 } catch (e: any) { alert(e.message); }
-              }} style={{ marginTop: 6, fontSize: 13, padding: '8px' }}>
-                + Начислить баллы
+              }} style={{ marginTop: 6, fontSize: 13, padding: '8px', opacity: awardedEventIds.has(selectedEvent.id) ? 0.5 : 1 }}>
+                {awardedEventIds.has(selectedEvent.id) ? 'Баллы начислены' : 'Начислить баллы'}
               </button>
             )}
 
@@ -578,7 +582,7 @@ export default function EventsPage({ coordinator }: Props) {
                   alert('✅ Список участников отправлен вам в Telegram');
                 } catch (e: any) { alert(e.message); }
               }} style={{ marginTop: 6, fontSize: 13, padding: '8px' }}>
-                📋 Выслать список участников
+                Выслать список участников
               </button>
             )}
 
