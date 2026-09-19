@@ -137,9 +137,7 @@ router.post('/student-register', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'ФИО и номер студенческого не совпадают. Проверьте данные или обратитесь к студсовету.' });
     }
 
-    if (student.telegramUsername) {
-      return res.status(409).json({ error: 'Этот студент уже привязан к другому Telegram аккаунту' });
-    }
+    const oldUsername = student.telegramUsername;
 
     let chatId: string | undefined;
     let photoUrl: string | undefined;

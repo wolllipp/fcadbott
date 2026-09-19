@@ -61,6 +61,19 @@ async function main() {
   }
   console.log(`✅ ${COORDINATORS.length} coordinators seeded`);
 
+  // Hardcoded students not in XLSX
+  const HARDCODED_STUDENTS = [
+    { fullName: 'Желтогирко Евгений Андреевич', groupNumber: '610901', studentCardNumber: '61090161090061', budgetStatus: BudgetStatus.BUDGET },
+  ];
+  for (const s of HARDCODED_STUDENTS) {
+    const existing = await prisma.student.findFirst({ where: { studentCardNumber: s.studentCardNumber } });
+    if (existing) {
+      await prisma.student.update({ where: { id: existing.id }, data: { fullName: s.fullName, groupNumber: s.groupNumber, budgetStatus: s.budgetStatus } });
+    } else {
+      await prisma.student.create({ data: { fullName: s.fullName, groupNumber: s.groupNumber, studentCardNumber: s.studentCardNumber, budgetStatus: s.budgetStatus, sectors: [] } });
+    }
+  }
+
   // Try to load students from xlsx
   const xlsxPath = path.resolve(__dirname, '../../uploads/ФКП_СС.xlsx');
   
