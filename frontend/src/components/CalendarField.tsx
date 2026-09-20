@@ -35,6 +35,7 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
   const [selectedHour, setSelectedHour] = useState(initHour);
   const [selectedMinute, setSelectedMinute] = useState(initMinute);
   const [dateSelected, setDateSelected] = useState(!!dateStr);
+  const [selectedDay, setSelectedDay] = useState<number | null>(parsed ? parsed.getDate() : null);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,6 +79,7 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
 
   function handleDayClick(d: number) {
     setDateSelected(true);
+    setSelectedDay(d);
     if (!includeTime) {
       onChange(toISO(viewYear, viewMonth, d));
       setOpen(false);
@@ -87,13 +89,15 @@ export default function CalendarField({ value, onChange, placeholder = 'Выбе
   function handleTimeDone() {
     const hh = String(selectedHour).padStart(2, '0');
     const mm = String(selectedMinute).padStart(2, '0');
-    onChange(`${toISO(viewYear, viewMonth, 1)}T${hh}:${mm}`);
+    const day = selectedDay || 1;
+    onChange(`${toISO(viewYear, viewMonth, day)}T${hh}:${mm}`);
     setOpen(false);
   }
 
   function handleToday() {
     if (includeTime) {
       setDateSelected(true);
+      setSelectedDay(today.getDate());
     } else {
       onChange(toISO(today.getFullYear(), today.getMonth(), today.getDate()));
       setOpen(false);
