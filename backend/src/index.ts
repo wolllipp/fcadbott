@@ -75,7 +75,7 @@ app.get('*', (req, res, next) => {
   res.sendFile('/root/fcadbott/fkp-ss-app/frontend/dist/index.html');
 });
 
-app.listen(Number(PORT), "127.0.0.1", async () => {
+app.listen(Number(PORT), "0.0.0.0", async () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
   await initBot();
   sendEventReminders();
