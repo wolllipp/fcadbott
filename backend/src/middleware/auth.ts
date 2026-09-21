@@ -51,7 +51,7 @@ function parseCookie(header?: string) {
 
 export function requireApiAuth(req: Request, res: Response, next: NextFunction) {
   const publicRequest = req.path === '/events' && req.method === 'GET'
-    || req.path.startsWith('/auth/')
+    || req.path.startsWith('/auth/') || req.path.startsWith('/api/auth/')
     || req.path === '/bot-webhook';
 
   const user = parseCookie(req.headers.cookie);
