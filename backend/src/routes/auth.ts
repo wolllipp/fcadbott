@@ -48,8 +48,8 @@ router.post('/verify', async (req: Request, res: Response) => {
   try {
     const { initData } = req.body;
 
-    // Test mode: requires BOTH production NODE_ENV strict + explicit ALLOW_TEST_AUTH flag
-    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_TEST_AUTH === 'true' && req.body.testUsername) {
+    // Test mode: allow in development for local testing, require explicit flag in production
+    if ((process.env.NODE_ENV !== 'production' || process.env.ALLOW_TEST_AUTH === 'true') && req.body.testUsername) {
       const username = String(req.body.testUsername ?? '').trim().replace(/^@+/, '');
       
       // First try coordinator

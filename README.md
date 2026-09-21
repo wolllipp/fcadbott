@@ -100,6 +100,7 @@ http://localhost:5173?user=wolllip
 | Username | Роль |
 |----------|------|
 | `wolllip` | Председатель |
+| `innandri` | Декан |
 | `feasga` | Зам. председателя |
 | `liza_samuylik` | Зам. председателя |
 | `gaiduchello` | Координатор (Театральное) |
