@@ -14,6 +14,11 @@ function canManageStudents(role: string): boolean {
   return role === 'CHAIRMAN' || role === 'DEPUTY' || role === 'DEAN' || role === 'SECRETARY' || role === 'COORDINATOR';
 }
 
+function canManageStudentSector(creator: { role: string; sector: string | null }, sector: unknown): boolean {
+  if (canManageCouncil(creator.role)) return true;
+  return creator.role === 'COORDINATOR' && typeof sector === 'string' && sector.length > 0 && creator.sector === sector;
+}
+
 // STUDENTS
 router.get('/students', async (req: Request, res: Response) => {
   try {
@@ -231,7 +236,7 @@ router.post('/students/:id/sector', async (req: Request, res: Response) => {
   try {
     const { creatorId, sector } = req.body;
     const creator = await prisma.coordinator.findUnique({ where: { id: creatorId } });
-    if (!creator || !canManageCouncil(creator.role)) return res.status(403).json({ error: 'Access denied' });
+    if (!creator || !canManageStudentSector(creator, sector)) return res.status(403).json({ error: 'Можно управлять только своим сектором' });
 
     const student = await prisma.student.findUnique({ where: { id: Number(req.params.id) } });
     if (!student) return res.status(404).json({ error: 'Student not found' });
@@ -253,7 +258,7 @@ router.delete('/students/:id/sector', async (req: Request, res: Response) => {
   try {
     const { creatorId, sector } = req.body;
     const creator = await prisma.coordinator.findUnique({ where: { id: creatorId } });
-    if (!creator || !canManageCouncil(creator.role)) return res.status(403).json({ error: 'Access denied' });
+    if (!creator || !canManageStudentSector(creator, sector)) return res.status(403).json({ error: 'Можно управлять только своим сектором' });
 
     const student = await prisma.student.findUnique({ where: { id: Number(req.params.id) } });
     if (!student) return res.status(404).json({ error: 'Student not found' });

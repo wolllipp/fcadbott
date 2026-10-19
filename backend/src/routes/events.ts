@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 
-import { sendNewEvent, sendParticipantsList, sendPointsAwarded, checkMilestone } from "../services/bot";
+import { sendNewEvent, sendParticipantsList, sendPointsAwarded, checkMilestone, sendExemptionPending, sendExemptionReport } from "../services/bot";
 const router = Router();
 
 function scannerIds(value: unknown, fallback: number): number[] {
@@ -200,12 +200,36 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!isAdmin && existing.createdBy !== coordinatorId) return res.status(403).json({ error: 'Вы можете удалять только свои мероприятия' });
     if (!isAdmin && existing.attendanceFinalized) return res.status(403).json({ error: 'Отметка завершена — удаление недоступно' });
 
-    await prisma.eventParticipant.deleteMany({ where: { eventId: id } });
-    await prisma.event.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // Remove dependent records first: PostgreSQL restricts deleting an event
+      // while its attendance records or applications still exist.
+      const applications = await tx.eventApplication.findMany({
+        where: { eventId: id },
+        select: { id: true },
+      });
+      const applicationIds = applications.map((application) => application.id);
+
+      if (applicationIds.length > 0) {
+        await tx.attendance.deleteMany({
+          where: { applicationId: { in: applicationIds } },
+        });
+      }
+      await tx.eventApplication.deleteMany({ where: { eventId: id } });
+      await tx.eventParticipant.deleteMany({ where: { eventId: id } });
+      await tx.eventScannerCoordinator.deleteMany({ where: { eventId: id } });
+      await tx.eventStudentScanner.deleteMany({ where: { eventId: id } });
+      await tx.eventOrganizer.deleteMany({ where: { eventId: id } });
+      // Keep awarded points in the student's history, but detach the deleted event.
+      await tx.pointTransaction.updateMany({
+        where: { eventId: id },
+        data: { eventId: null },
+      });
+      await tx.event.delete({ where: { id } });
+    });
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error(`Failed to delete event ${req.params.id}:`, err);
+    res.status(500).json({ error: 'Не удалось удалить мероприятие. Проверьте журнал backend.' });
   }
 });
 
@@ -336,13 +360,15 @@ router.post('/:id/generate-exemption', async (req: Request, res: Response) => {
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
     const attendedStudents = event.participants;
+    const coordinator = await prisma.coordinator.findUnique({ where: { id: coordinatorId } });
+    const isAdmin = ['CHAIRMAN', 'DEAN', 'DEPUTY', 'SECRETARY'].includes(coordinator?.role || '');
 
     const exemption = await prisma.exemption.create({
       data: {
         exemptionDate: new Date(exemptionDate),
         reason: reason || event.name,
         createdBy: coordinatorId,
-        status: 'PENDING',
+        status: isAdmin ? 'APPROVED' : 'PENDING',
         students: {
           create: attendedStudents.map((p) => ({
             externalName: p.fullName,
@@ -358,8 +384,8 @@ router.post('/:id/generate-exemption', async (req: Request, res: Response) => {
       data: { status: 'COMPLETED', attendanceFinalized: true },
     });
 
-    const { sendExemptionPending } = require('../services/bot');
-    await sendExemptionPending(exemption);
+    if (isAdmin) await sendExemptionReport(exemption);
+    else await sendExemptionPending(exemption);
 
     res.json(exemption);
   } catch (err) {
@@ -457,7 +483,8 @@ router.post('/:id/send-participants', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Только создатель или председатель может выслать список' });
     }
 
-    await sendParticipantsList(eventId, coordinator.chatId);
+    const sent = await sendParticipantsList(eventId, coordinator.chatId);
+    if (!sent) return res.status(502).json({ error: 'Не удалось отправить список через Telegram. Попробуйте ещё раз.' });
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

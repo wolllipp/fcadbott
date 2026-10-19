@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Coordinator } from '../App';
-import { api } from '../utils/api';
+import { api, apiRequest } from '../utils/api';
 
 interface SectorOverview {
   [sectorName: string]: {
@@ -85,7 +85,7 @@ export default function SectorPage({ coordinator }: Props) {
   async function removeStudentFromMySector(studentId: number) {
     if (!confirm('Удалить студента из сектора?')) return;
     try {
-      await fetch('/api/council/students/' + studentId + '/sector', {
+      await apiRequest('/council/students/' + studentId + '/sector', {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ creatorId: coordinator.id, sector: coordinator.sector }),
       });
@@ -95,7 +95,7 @@ export default function SectorPage({ coordinator }: Props) {
 
   async function addExistingStudentToMySector(studentId: number) {
     try {
-      await fetch('/api/council/students/' + studentId + '/sector', {
+      await apiRequest('/council/students/' + studentId + '/sector', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ creatorId: coordinator.id, sector: coordinator.sector }),
       });
@@ -108,7 +108,7 @@ export default function SectorPage({ coordinator }: Props) {
   async function removeStudentFromSector(studentId: number, sectorName: string) {
     if (!confirm('Удалить студента из сектора?')) return;
     try {
-      await fetch('/api/council/students/' + studentId + '/sector', {
+      await apiRequest('/council/students/' + studentId + '/sector', {
         method: 'DELETE', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ creatorId: coordinator.id, sector: sectorName }),
       });

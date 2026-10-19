@@ -132,24 +132,32 @@ export async function sendExemptionPending(exemption: any) {
 export async function sendExemptionReport(exemption: any) {
   if (!bot) return;
   const dateStr = new Date(exemption.exemptionDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const students = exemption.students.map((es: any, i: number) =>
+  const studentLines = exemption.students.map((es: any, i: number) =>
     `${i + 1}. ${es.student?.fullName || es.externalName} | ${es.student?.groupNumber || es.externalGroup}`
-  ).join('\n');
-  const message =
-    `✅ *ДОКЛАДНАЯ ЗАПИСКА ПОДТВЕРЖДЕНА*\n\n📅 Дата: *${dateStr}*\n👤 Выставил(а): *${exemption.coordinator.fullName}*\n📌 Причина: ${exemption.reason}\n\n*Освобождённые студенты:*\n${students}\n\n✅ Пропуски ${dateStr} считать по уважительной причине`;
+  );
+  const header = `Докладная записка подтверждена\nДата: ${dateStr}\nВыставил(а): ${exemption.coordinator.fullName}\nПричина: ${exemption.reason}\nОсвобождённые студенты: ${exemption.students.length}`;
   let docBuffer: Buffer | null = null;
   try { docBuffer = await generateExemptionDoc(exemption); } catch (e) { console.error('docx error:', e); }
   const chatIds = [...await getChairmanChatIds(), ...await getSecretaryChatIds()];
   for (const chatId of [...new Set(chatIds)]) {
-    try {
-      await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-      if (docBuffer) {
+    let message = header;
+    for (const line of studentLines) {
+      if ((message + '\n' + line).length > 3500) {
+        try { await bot.sendMessage(chatId, message); } catch (e) { console.error(`Failed to send exemption text to ${chatId}:`, e); }
+        message = line;
+      } else {
+        message += '\n' + line;
+      }
+    }
+    try { await bot.sendMessage(chatId, message + `\nПропуски ${dateStr} считать по уважительной причине`); } catch (e) { console.error(`Failed to send exemption text to ${chatId}:`, e); }
+    if (docBuffer) {
+      try {
         await bot.sendDocument(chatId, docBuffer,
-          { caption: `📎 Докладная от ${dateStr}` },
+          { caption: `Докладная от ${dateStr}` },
           { filename: `Освобождение_${dateStr.replace(/\./g, '-')}.docx`, contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
         );
-      }
-    } catch (e) { console.error(`Failed to send to ${chatId}:`, e); }
+      } catch (e) { console.error(`Failed to send exemption document to ${chatId}:`, e); }
+    }
   }
 }
 
@@ -384,11 +392,11 @@ export async function checkMilestone(studentId: number) {
   }
 }
 
-export async function sendParticipantsList(eventId: number, coordinatorChatId: string) {
-  if (!bot || !coordinatorChatId) return;
+export async function sendParticipantsList(eventId: number, coordinatorChatId: string): Promise<boolean> {
+  if (!bot || !coordinatorChatId) return false;
 
   const event = await prisma.event.findUnique({ where: { id: eventId } });
-  if (!event) return;
+  if (!event) return false;
 
   const participants = await prisma.eventParticipant.findMany({
     where: { eventId },
@@ -396,8 +404,13 @@ export async function sendParticipantsList(eventId: number, coordinatorChatId: s
   });
 
   if (participants.length === 0) {
-    try { await bot.sendMessage(coordinatorChatId, '📋 У участников мероприятия «' + event.name + '» нет записей.'); } catch (e) { console.error(e); }
-    return;
+    try {
+      await bot.sendMessage(coordinatorChatId, 'У участников мероприятия «' + event.name + '» нет записей.');
+      return true;
+    } catch {
+      console.error('Telegram participant list delivery failed');
+      return false;
+    }
   }
 
   const studentNames = participants.map((p) => p.fullName);
@@ -415,7 +428,26 @@ export async function sendParticipantsList(eventId: number, coordinatorChatId: s
   });
 
   const dateStr = new Date(event.eventDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const message = '📋 *Участники мероприятия*\n\n*' + event.name + '*\n📅 ' + dateStr + '\n👥 Всего: *' + participants.length + '*\n\n' + lines.join('\n');
+  const header = 'Участники мероприятия: ' + event.name + '\nДата: ' + dateStr + '\nВсего: ' + participants.length;
+  const messages: string[] = [];
+  let message = header;
+  for (const line of lines) {
+    if ((message + '\n' + line).length > 3500) {
+      messages.push(message);
+      message = header + '\n' + line;
+    } else {
+      message += '\n' + line;
+    }
+  }
+  messages.push(message);
 
-  try { await bot.sendMessage(coordinatorChatId, message, { parse_mode: 'Markdown' }); } catch (e) { console.error(e); }
+  for (const part of messages) {
+    try {
+      await bot.sendMessage(coordinatorChatId, part);
+    } catch {
+      console.error('Telegram participant list delivery failed');
+      return false;
+    }
+  }
+  return true;
 }
